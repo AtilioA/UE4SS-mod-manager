@@ -1,6 +1,8 @@
 from json import dumps, load
 from pathlib import Path
-from shutil import copytree, rmtree
+from shutil import copytree, move
+from tempfile import TemporaryDirectory
+from zipfile import ZipFile
 
 from loguru import logger
 
@@ -110,16 +112,52 @@ class UE4SSModManager:
 			mod.enable()
 			return mod
 
-		if target_path.exists():
-			if not replace:
-				raise FileExistsError(f"Mod {source_path.name} already exists.")
-
-			# rmtree(target_path)
+		if target_path.exists() and not replace:
+			raise FileExistsError(f"Mod {source_path.name} already exists.")
 
 		copytree(source_path, target_path)
 		installed_mod = UE4SSMod.from_path(target_path)
 		installed_mod.enable()
 		return installed_mod
+
+	def install_mod_archive(self, source_path: Path, *, replace: bool = False) -> UE4SSMod:
+		"""Install a zipped mod archive into the managed Mods directory.
+
+		Returns:
+			The installed and enabled mod.
+
+		Raises:
+			ValueError: If the zip contains unsafe paths.
+		"""
+		with TemporaryDirectory() as temp_dir:
+			extract_path = Path(temp_dir)
+
+			with ZipFile(source_path) as archive:
+				for name in archive.namelist():
+					path = Path(name)
+					if path.is_absolute() or ".." in path.parts:
+						raise ValueError(f"Unsafe zip entry: {name}")
+
+				archive.extractall(extract_path)
+
+			mod_path = self._archive_mod_path(extract_path, source_path.stem)
+			return self.install_mod_folder(mod_path, replace=replace)
+
+	@staticmethod
+	def _archive_mod_path(extract_path: Path, archive_name: str) -> Path:
+		if any(child.is_dir() and child.name.lower() == "scripts" for child in extract_path.iterdir()):
+			mod_path = extract_path / archive_name
+			mod_path.mkdir()
+			for child in list(extract_path.iterdir()):
+				if child != mod_path:
+					move(str(child), mod_path / child.name)
+			return mod_path
+
+		folders = [child for child in extract_path.iterdir() if child.is_dir()]
+		if len(folders) == 1:
+			return folders[0]
+
+		return extract_path
 
 	def enable_mods(self, mod_names: list[str]) -> None:
 		"""Enables the specified mods by creating enabled.txt files."""

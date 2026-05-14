@@ -55,10 +55,10 @@ class UE4SSMod:
 		scripts = lua + dll
 
 		if not scripts:
-			raise InvalidModException(f"Mod {name} has no scripts.")
+			raise InvalidModException(f"Path or mod '{name}' has no scripts. Please verify you're importing the correct mod.")
 
 		if "main.lua" not in scripts and "main.dll" not in scripts:
-			raise InvalidModException(f"Mod {name} does not have a main file: {scripts}")
+			raise InvalidModException(f"Path or mod '{name}' does not have a main file: {scripts}. Please verify you're importing the correct mod.")
 
 		lang = "lua" if "main.lua" in scripts else "cpp"
 

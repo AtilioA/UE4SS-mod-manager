@@ -71,7 +71,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		self.update_save_button_state()
 
 	def _setup_drag_and_drop(self) -> None:
-		"""Allow users to drop a mod folder onto the app to install it."""
+		"""Allow users to drop a mod folder or zip archive onto the app to install it."""
 		if TkinterDnD is None or DND_FILES is None:
 			logger.warning("tkinterdnd2 is not available; drag and drop is disabled.")
 			return
@@ -80,7 +80,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			self.TkdndVersion = TkinterDnD._require(self)
 			self.drag_and_drop_enabled = True
 			self._register_drop_target(self)
-			self.status_bar.configure(text=f"{self.status_bar.cget('text')}. Drop a mod folder to install.")
+			self.status_bar.configure(text=f"{self.status_bar.cget('text')}. Drop a mod folder or zip to install.")
 		except Exception as e:
 			logger.warning(f"Failed to enable drag and drop: {e}")
 
@@ -347,7 +347,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			self.show_error("Error launching game", str(e))
 
 	def handle_mod_folder_drop(self, event: object) -> str:
-		"""Install and enable a dropped UE4SS mod folder.
+		"""Install and enable a dropped UE4SS mod folder or zip archive.
 
 		Returns:
 			The DND action accepted by the drop handler.
@@ -355,12 +355,12 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		try:
 			dropped_paths = [Path(path) for path in self.tk.splitlist(getattr(event, "data", ""))]
 			if len(dropped_paths) != 1:
-				self.show_error("Invalid drop", "Drop exactly one mod folder.")
+				self.show_error("Invalid drop", "Drop exactly one mod folder or zip file.")
 				return COPY
 
 			source_path = dropped_paths[0]
-			if not source_path.is_dir():
-				self.show_error("Invalid drop", "Drop a mod folder, not a file.")
+			if not source_path.is_dir() and source_path.suffix.lower() != ".zip":
+				self.show_error("Invalid drop", "Drop a mod folder or zip file.")
 				return COPY
 
 			target_path = self.mod_manager.path / source_path.name
@@ -381,9 +381,12 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		return COPY
 
 	def install_dropped_mod(self, source_path: Path, *, replace: bool = False) -> None:
-		"""Install a dropped mod folder, enable it, and refresh the UI."""
+		"""Install a dropped mod folder or zip archive, enable it, and refresh the UI."""
 		try:
-			installed_mod = self.mod_manager.install_mod_folder(source_path, replace=replace)
+			if source_path.is_dir():
+				installed_mod = self.mod_manager.install_mod_folder(source_path, replace=replace)
+			else:
+				installed_mod = self.mod_manager.install_mod_archive(source_path, replace=replace)
 			self.mod_manager.mods = self.mod_manager.load_mods()
 			self.initial_mod_states = {mod.name: mod.enabled for mod in self.mod_manager.mods}
 			self.populate_mod_list()
