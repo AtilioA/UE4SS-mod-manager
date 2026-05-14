@@ -67,4 +67,4 @@ inline-quotes = "double"
 convention = "google"
 
 [lint.pycodestyle]
-max-doc-length = 500
+max-doc-length = 320

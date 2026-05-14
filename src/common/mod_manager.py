@@ -1,5 +1,6 @@
 from json import dumps, load
 from pathlib import Path
+from shutil import copytree, rmtree
 
 from loguru import logger
 
@@ -91,6 +92,34 @@ class UE4SSModManager:
 					continue
 
 		return output
+
+	def install_mod_folder(self, source_path: Path, *, replace: bool = False) -> UE4SSMod:
+		"""Install a mod folder into the managed Mods directory and enable it.
+
+		Returns:
+			The installed and enabled mod.
+
+		Raises:
+			FileExistsError: If the mod already exists and replace is false.
+		"""
+		source_path = source_path.resolve()
+		mod = UE4SSMod.from_path(source_path)
+		target_path = (self.path / source_path.name).resolve()
+
+		if source_path == target_path:
+			mod.enable()
+			return mod
+
+		if target_path.exists():
+			if not replace:
+				raise FileExistsError(f"Mod {source_path.name} already exists.")
+
+			# rmtree(target_path)
+
+		copytree(source_path, target_path)
+		installed_mod = UE4SSMod.from_path(target_path)
+		installed_mod.enable()
+		return installed_mod
 
 	def enable_mods(self, mod_names: list[str]) -> None:
 		"""Enables the specified mods by creating enabled.txt files."""

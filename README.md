@@ -8,6 +8,7 @@ A simple GUI application for managing [UE4SS](https://github.com/UE4SS-RE/RE-UE4
 
 - Enable/disable mods with a single click
 - Toggle all mods on/off with one button
+- Drag and drop a mod folder to install and enable it
 - Configurable save options:
   - Individual enabled.txt files
   - mods.json for UE4SS
@@ -27,10 +28,13 @@ A simple GUI application for managing [UE4SS](https://github.com/UE4SS-RE/RE-UE4
 
 1. Clone this repository
 2. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
+
 3. Run the application:
+
    ```bash
    python src/main.py
    ```
@@ -40,12 +44,13 @@ A simple GUI application for managing [UE4SS](https://github.com/UE4SS-RE/RE-UE4
 1. Launch the application
 2. All mods in your UE4SS/Mods folder are automatically detected
 3. Enable/disable mods by checking/unchecking their boxes
-4. Use "Toggle All" to enable/disable all mods at once
+4. Drag a mod folder onto the window to install and enable it automatically
 5. Configure save options:
    - "Save enabled.txt" - Updates individual enabled.txt files in each mod folder
    - "Save mods.json" - Updates the mods.json file used by UE4SS
    - "Save mods.txt" - Updates the mods.txt file used by UE4SS
 6. Click "Save Changes" to apply your configuration
+Use "Toggle All" to enable/disable all mods at once
 
 ## How It Works
 
@@ -65,10 +70,13 @@ A simple GUI application for managing [UE4SS](https://github.com/UE4SS-RE/RE-UE4
 
 1. Clone the repository
 2. Install development dependencies:
+
    ```bash
    pip install -r requirements.dev.txt
    ```
+
 3. Install pre-commit hooks:
+
    ```bash
    pre-commit install
    ```

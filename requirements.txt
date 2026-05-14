@@ -1,2 +1,3 @@
 customtkinter
 loguru
+tkinterdnd2
