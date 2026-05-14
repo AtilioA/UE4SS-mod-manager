@@ -22,17 +22,20 @@ _DND_BASE = TkinterDnD.DnDWrapper if TkinterDnD else object
 
 
 def find_game_executable(current_dir: Path | None = None) -> Path | None:
-	"""Find the first game executable one directory above the current directory.
+	"""Find the first game executable above the UE4SS or UE4SS/Mods directory.
 
 	Returns:
-		The first sorted matching executable, or None when no match exists.
+		The first sorted matching executable in the first or second parent directory, or None when no match exists.
 	"""
-	search_dir = (current_dir or Path.cwd()).parent
-	matches = sorted(
-		(path for path in search_dir.glob("*Win64-Shipping.exe") if path.is_file()),
-		key=lambda path: path.name.lower(),
-	)
-	return matches[0] if matches else None
+	start_dir = current_dir or Path.cwd()
+	for search_dir in (start_dir.parent, start_dir.parent.parent):
+		matches = sorted(
+			(path for path in search_dir.glob("*Win64-Shipping.exe") if path.is_file()),
+			key=lambda path: path.name.lower(),
+		)
+		if matches:
+			return matches[0]
+	return None
 
 
 class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
@@ -347,13 +350,13 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			self.show_error("Error Refreshing Mods", str(e))
 
 	def launch_game(self) -> None:
-		"""Launch the first game executable found one directory above the current directory."""
+		"""Launch the first game executable found above the ue4ss or ue4ss/Mods directory."""
 		try:
 			game_executable = find_game_executable()
 			if game_executable is None:
 				self.show_error(
 					"Game not found",
-					f"No executable ending with Win64-Shipping.exe was found in {Path.cwd().parent}.",
+					f"No executable ending with Win64-Shipping.exe was found above {Path.cwd()}.",
 				)
 				return
 
