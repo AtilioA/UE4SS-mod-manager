@@ -1,3 +1,4 @@
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
@@ -18,6 +19,20 @@ from src.common.mod import UE4SSMod
 from src.common.mod_manager import UE4SSModManager
 
 _DND_BASE = TkinterDnD.DnDWrapper if TkinterDnD else object
+
+
+def find_game_executable(current_dir: Path | None = None) -> Path | None:
+	"""Find the first game executable one directory above the current directory.
+
+	Returns:
+		The first sorted matching executable, or None when no match exists.
+	"""
+	search_dir = (current_dir or Path.cwd()).parent
+	matches = sorted(
+		(path for path in search_dir.glob("*Win64-Shipping.exe") if path.is_file()),
+		key=lambda path: path.name.lower(),
+	)
+	return matches[0] if matches else None
 
 
 class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
@@ -200,6 +215,14 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		)
 		self.reset_button.pack(side="right", padx=5, pady=5)
 
+		self.launch_game_button = ctk.CTkButton(
+			self.controls_frame,
+			text="Launch Game",
+			command=self.launch_game,
+			width=110,
+		)
+		self.launch_game_button.pack(side="right", padx=5, pady=5)
+
 	def _create_mod_list(self) -> None:
 		"""Create the scrollable mod list area."""
 		self.mod_list_frame = ctk.CTkScrollableFrame(self.main_frame)
@@ -305,6 +328,23 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		except Exception as e:
 			logger.exception(f"Error refreshing mods: {e}")
 			self.show_error("Error Refreshing Mods", str(e))
+
+	def launch_game(self) -> None:
+		"""Launch the first game executable found one directory above the current directory."""
+		try:
+			game_executable = find_game_executable()
+			if game_executable is None:
+				self.show_error(
+					"Game not found",
+					f"No executable ending with Win64-Shipping.exe was found in {Path.cwd().parent}.",
+				)
+				return
+
+			subprocess.Popen([str(game_executable)], cwd=game_executable.parent)
+			self.status_bar.configure(text=f"Launched {game_executable.name}.")
+		except Exception as e:
+			logger.exception(f"Error launching game: {e}")
+			self.show_error("Error launching game", str(e))
 
 	def handle_mod_folder_drop(self, event: object) -> str:
 		"""Install and enable a dropped UE4SS mod folder.
