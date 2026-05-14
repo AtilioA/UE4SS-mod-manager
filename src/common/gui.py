@@ -97,7 +97,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 
 	def _setup_window(self, icon_path: Path | None = None) -> None:
 		"""Configure the window properties."""
-		self.title("UE4SS Mod Manager")
+		self.title("Subnautica 2 UE4SS Mod Manager")
 
 		# Make window size dynamic based on screen size
 		screen_width = self.winfo_screenwidth()
@@ -147,7 +147,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		"""Create the title label if no logo is available."""
 		self.title_label = ctk.CTkLabel(
 			self.main_frame,
-			text="UE4SS Mod Manager",
+			text="Subnautica 2 UE4SS Mod Manager",
 			font=ctk.CTkFont(size=24, weight="bold"),
 		)
 		self.title_label.pack(pady=(0, 15))
@@ -279,8 +279,19 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			text="Save Changes",
 			command=self.save_changes,
 			width=120,
+			text_color_disabled=("gray55", "gray60"),
 			state="disabled",
 		)
+		self.save_button_colors = {
+			"normal": {
+				"fg_color": self.save_button.cget("fg_color"),
+				"hover_color": self.save_button.cget("hover_color"),
+			},
+			"disabled": {
+				"fg_color": ("gray75", "gray35"),
+				"hover_color": ("gray75", "gray35"),
+			},
+		}
 		self.save_button.pack(side="right", padx=10, pady=8)
 
 	def _create_status_bar(self) -> None:
@@ -308,13 +319,19 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 
 	def update_save_button_state(self) -> None:
 		"""Update the save button state based on save options."""
-		if (
-			not (self.save_enabled_txt_var.get() or self.save_mods_json_var.get() or self.save_mods_txt_var.get())
-			or self.initial_mod_states == self.get_mod_status()
-		):
-			self.save_button.configure(state="disabled")
-		else:
-			self.save_button.configure(state="normal")
+		has_changes = self.initial_mod_states != self.get_mod_status()
+		has_save_target = (
+			self.save_enabled_txt_var.get() or self.save_mods_json_var.get() or self.save_mods_txt_var.get()
+		)
+		self._set_save_button_state("normal" if has_changes and has_save_target else "disabled")
+
+	def _set_save_button_state(self, state: str) -> None:
+		"""Apply save button state and matching theme colors."""
+		colors = self.save_button_colors[state]
+		self.save_button.configure(
+			**colors,
+			state=state,
+		)
 
 	def refresh_mods(self) -> None:
 		"""Reload mods from disk."""
