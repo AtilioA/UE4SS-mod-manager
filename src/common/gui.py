@@ -238,7 +238,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		self.save_enabled_txt_var = ctk.BooleanVar(value=True)
 		self.save_enabled_txt = ctk.CTkSwitch(
 			self.save_options_frame,
-			text="Save enabled.txt",
+			text="Save enabled.txt (recommended)",
 			variable=self.save_enabled_txt_var,
 			onvalue=True,
 			offvalue=False,
