@@ -17,6 +17,7 @@ class UE4SSMod:
 	scripts: list[str]
 	is_native: bool = False
 	lang: Literal["lua", "cpp"] = "lua"
+	config_path: Path | None = None
 
 	@classmethod
 	def from_path(cls, path: Path, *, override_enabled: bool = False) -> "UE4SSMod":
@@ -28,18 +29,18 @@ class UE4SSMod:
 			override_enabled (optional): If True, the mod will be considered enabled even if
 				there is no enabled.txt file. Defaults to False.
 
+		Returns:
+			An instance of the UE4SSMod class with the mod's name, enabled status, and list of scripts.
+
 		Raises:
 			InvalidModException: If the mod directory does not contain a main.lua file or if the directory
 				is not a directory.
-
-		Returns:
-			An instance of the UE4SSMod class with the mod's name, enabled status, and list of scripts.
 		"""
 		name = path.stem
 
 		if not path.is_dir():
 			logger.warning(f"Mod {name} is not a directory.")
-			return None
+			raise InvalidModException(f"Mod {name} is not a directory.")
 
 		lua = [
 			str(script).replace("/", "").replace("\\", "").split(name)[1][7:]
@@ -62,10 +63,23 @@ class UE4SSMod:
 		lang = "lua" if "main.lua" in scripts else "cpp"
 
 		enabled = (path / "enabled.txt").exists() or override_enabled
+		config_path = next(
+			(
+				script
+				for script in path.glob("scripts/*.lua", case_sensitive=False)
+				if script.name.lower() == "config.lua"
+			),
+			None,
+		)
 
 		logger.debug(f"Mod {name} is {'enabled' if enabled else 'disabled'} with {len(scripts)} script(s)")
 
-		return cls(name=name, enabled=enabled, scripts=scripts, path=path, lang=lang)
+		return cls(name=name, enabled=enabled, scripts=scripts, path=path, lang=lang, config_path=config_path)
+
+	@property
+	def has_config(self) -> bool:
+		"""Return whether this mod exposes a scripts/config.lua file."""
+		return self.config_path is not None
 
 	def disable(self) -> None:
 		"""Disables the mod by removing the enabled.txt file."""

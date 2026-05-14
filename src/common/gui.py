@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from pathlib import Path
 
 import customtkinter as ctk
@@ -11,6 +12,8 @@ except ImportError:
 	DND_FILES = None
 	TkinterDnD = None
 
+from src.common.config import LuaConfigDocument
+from src.common.config_validation import ConfigValidationError, ConfigValue, validate_config_value
 from src.common.mod import UE4SSMod
 from src.common.mod_manager import UE4SSModManager
 
@@ -138,7 +141,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		"""Create the search filter components."""
 		self.list_label = ctk.CTkLabel(
 			self.header_frame,
-			text="Available Mods:",
+			text="Available mods:",
 			font=ctk.CTkFont(size=16, weight="bold"),
 		)
 		self.list_label.pack(side="left", padx=10, pady=5)
@@ -156,7 +159,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		self.show_native_mods_var = ctk.BooleanVar(value=False)
 		self.show_native_switch = ctk.CTkSwitch(
 			self.header_frame,
-			text="Show Native Mods",
+			text="Show native mods",
 			variable=self.show_native_mods_var,
 			onvalue=True,
 			offvalue=False,
@@ -172,7 +175,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		self.toggle_all_var = ctk.BooleanVar(value=False)
 		self.toggle_all_checkbox = ctk.CTkCheckBox(
 			self.controls_frame,
-			text="Toggle All",
+			text="Toggle all",
 			variable=self.toggle_all_var,
 			onvalue=True,
 			offvalue=False,
@@ -249,7 +252,11 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		self.spacer.pack(side="left", fill="x", expand=True)
 
 		self.save_button = ctk.CTkButton(
-			self.save_options_frame, text="Save Changes", command=self.save_changes, width=120, state="disabled",
+			self.save_options_frame,
+			text="Save Changes",
+			command=self.save_changes,
+			width=120,
+			state="disabled",
 		)
 		self.save_button.pack(side="right", padx=10, pady=8)
 
@@ -380,6 +387,15 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 				)
 				script_count.pack(side="right", padx=10, pady=5)
 
+				if mod.has_config:
+					config_button = ctk.CTkButton(
+						frame,
+						text="Configure mod",
+						command=lambda selected_mod=mod: self.show_config_window(selected_mod),
+						width=32,
+					)
+					config_button.pack(side="right", padx=5, pady=5)
+
 				self.mod_checkboxes[mod.name] = checkbox
 
 			visible_count = sum(
@@ -428,7 +444,150 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			logger.exception(f"Error resetting mods: {e}")
 			self.show_error("Error Resetting Mods", str(e))
 
-	def show_warning(self, title: str, message: str, on_ok: callable, on_cancel: callable) -> None:
+	def show_config_window(self, mod: UE4SSMod) -> None:
+		"""Show a config editor for supported scripts/config.lua values."""
+		if not mod.config_path:
+			self.show_error("Missing Config", f"{mod.name} does not have a scripts/config.lua file.")
+			return
+
+		try:
+			document = LuaConfigDocument.from_path(mod.config_path)
+		except Exception as e:
+			logger.exception(f"Error loading config for {mod.name}: {e}")
+			self.show_error("Error Loading Config", str(e))
+			return
+
+		if not document.entries:
+			self.show_error(
+				"Unsupported Config",
+				"No supported top-level boolean, number, or string values were found.",
+			)
+			return
+
+		config_window, fields_frame, button_frame = self._create_config_window(mod)
+		field_vars = self._create_config_fields(fields_frame, document)
+
+		cancel_button = ctk.CTkButton(button_frame, text="Cancel", command=config_window.destroy, width=100)
+		cancel_button.pack(side="left", padx=10, pady=10)
+
+		save_button = ctk.CTkButton(
+			button_frame,
+			text="Save",
+			command=lambda: self._save_config_window(mod, document, field_vars, config_window),
+			width=100,
+		)
+		save_button.pack(side="right", padx=10, pady=10)
+
+	def _create_config_window(self, mod: UE4SSMod) -> tuple[ctk.CTkToplevel, ctk.CTkScrollableFrame, ctk.CTkFrame]:
+		config_window = ctk.CTkToplevel(self)
+		config_window.title(f"Configure {mod.name}")
+		config_window.geometry("520x480")
+		config_window.transient(self)
+		config_window.grab_set()
+		config_window.attributes("-topmost", True)  # noqa: FBT003
+		config_window.after(100, lambda: config_window.attributes("-topmost", False))  # noqa: FBT003
+
+		frame = ctk.CTkFrame(config_window)
+		frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+		title = ctk.CTkLabel(frame, text=f"Configure {mod.name}", font=ctk.CTkFont(size=18, weight="bold"))
+		title.pack(anchor="w", padx=10, pady=(10, 5))
+
+		config_path_label = ctk.CTkLabel(
+			frame,
+			text=str(mod.config_path),
+			font=ctk.CTkFont(size=11),
+			text_color="gray",
+		)
+		config_path_label.pack(anchor="w", padx=10, pady=(0, 10))
+
+		fields_frame = ctk.CTkScrollableFrame(frame)
+		fields_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+		button_frame = ctk.CTkFrame(frame)
+		button_frame.pack(fill="x", padx=10, pady=(10, 5))
+		return config_window, fields_frame, button_frame
+
+	@staticmethod
+	def _create_config_fields(
+		fields_frame: ctk.CTkScrollableFrame,
+		document: LuaConfigDocument,
+	) -> dict[str, ctk.BooleanVar | ctk.StringVar]:
+		field_vars: dict[str, ctk.BooleanVar | ctk.StringVar] = {}
+		for entry in document.entries:
+			row = ctk.CTkFrame(fields_frame)
+			row.pack(fill="x", padx=4, pady=5)
+			row.grid_columnconfigure(0, minsize=250)
+			row.grid_columnconfigure(1, weight=1)
+
+			label_frame = ctk.CTkFrame(row, fg_color="transparent")
+			label_frame.grid(row=0, column=0, sticky="nw", padx=(12, 16), pady=10)
+
+			label = ctk.CTkLabel(label_frame, text=entry.key, anchor="w", font=ctk.CTkFont(weight="bold"))
+			label.pack(fill="x", anchor="w")
+
+			if entry.comment:
+				description = ctk.CTkLabel(
+					label_frame,
+					text=entry.comment,
+					anchor="w",
+					justify="left",
+					wraplength=230,
+					font=ctk.CTkFont(size=11),
+					text_color="gray",
+				)
+				description.pack(fill="x", anchor="w", pady=(2, 0))
+
+			if entry.value_type == "boolean":
+				var = ctk.BooleanVar(value=bool(entry.value))
+				field = ctk.CTkSwitch(row, text="", variable=var, onvalue=True, offvalue=False, width=24)
+				field_sticky = "w"
+			elif entry.value_type == "nil":
+				var = ctk.StringVar(value="nil")
+				field = ctk.CTkEntry(row, textvariable=var, state="disabled")
+				field_sticky = "ew"
+			else:
+				var = ctk.StringVar(value=str(entry.value))
+				field = ctk.CTkEntry(row, textvariable=var)
+				field_sticky = "ew"
+
+			field.grid(row=0, column=1, sticky=field_sticky, padx=(0, 12), pady=10)
+			field_vars[entry.key] = var
+
+		return field_vars
+
+	@staticmethod
+	def _collect_config_updates(
+		document: LuaConfigDocument,
+		field_vars: dict[str, ctk.BooleanVar | ctk.StringVar],
+	) -> dict[str, ConfigValue]:
+		updates: dict[str, ConfigValue] = {}
+		for entry in document.entries:
+			updates[entry.key] = validate_config_value(field_vars[entry.key].get(), entry.value_type)
+
+		return updates
+
+	def _save_config_window(
+		self,
+		mod: UE4SSMod,
+		document: LuaConfigDocument,
+		field_vars: dict[str, ctk.BooleanVar | ctk.StringVar],
+		config_window: ctk.CTkToplevel,
+	) -> None:
+		try:
+			document.save(self._collect_config_updates(document, field_vars))
+		except ConfigValidationError as e:
+			self.show_error("Invalid config value", str(e))
+			return
+		except Exception as e:
+			logger.exception(f"Error saving config for {mod.name}: {e}")
+			self.show_error("Error saving config", str(e))
+			return
+
+		self.status_bar.configure(text=f"Saved config for {mod.name}.")
+		config_window.destroy()
+
+	def show_warning(self, title: str, message: str, on_ok: Callable[[], None], on_cancel: Callable[[], None]) -> None:
 		"""Show a warning popup with OK and Cancel buttons."""
 		warning_window = ctk.CTkToplevel(self)
 		warning_window.title(title)
@@ -506,7 +665,15 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 
 				if checkbox:
 					logger.debug(f"Mod: {mod.name}, Enabled: {checkbox.get()}")
-					updated_mod = UE4SSMod(name=mod.name, path=mod.path, enabled=checkbox.get(), scripts=mod.scripts)
+					updated_mod = UE4SSMod(
+						name=mod.name,
+						path=mod.path,
+						enabled=checkbox.get(),
+						scripts=mod.scripts,
+						is_native=mod.is_native,
+						lang=mod.lang,
+						config_path=mod.config_path,
+					)
 					updated_mods.append(updated_mod)
 
 		except Exception as e:
