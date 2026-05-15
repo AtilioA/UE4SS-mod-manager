@@ -27,3 +27,4 @@ packages = ["src"]
 
 [project.scripts]
 ue4ss-modmanager = "src.main:main"
+build = "build:main"
