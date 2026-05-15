@@ -18,6 +18,37 @@ def create_mods_path(root: Path) -> Path:
 class UE4SSModManagerArchiveTests(unittest.TestCase):
 	"""Tests for zipped mod installation."""
 
+	def test_invalid_mods_json_does_not_prevent_loading_mods(self) -> None:
+		"""Malformed UE4SS mods.json is ignored instead of blocking startup."""
+		with TemporaryDirectory() as temp_dir:
+			root = Path(temp_dir)
+			mods_path = create_mods_path(root)
+			(mods_path / "mods.json").write_text(
+				'[{"mod_name": "ExampleMod"}\n{"mod_enabled": true}]',
+				encoding="utf-8",
+			)
+			(mods_path / "ExampleMod" / "scripts").mkdir(parents=True)
+			(mods_path / "ExampleMod" / "scripts" / "main.lua").write_text("", encoding="utf-8")
+
+			manager = UE4SSModManager(mods_path)
+
+			assert manager.all_mods == ["ExampleMod"]
+			assert manager.disabled_mods == ["ExampleMod"]
+
+	def test_invalid_mods_json_still_allows_mods_txt_overrides(self) -> None:
+		"""A bad mods.json does not discard valid enabled state from mods.txt."""
+		with TemporaryDirectory() as temp_dir:
+			root = Path(temp_dir)
+			mods_path = create_mods_path(root)
+			(mods_path / "mods.json").write_text("not json", encoding="utf-8")
+			(mods_path / "mods.txt").write_text("ExampleMod : 1\n", encoding="utf-8")
+			(mods_path / "ExampleMod" / "scripts").mkdir(parents=True)
+			(mods_path / "ExampleMod" / "scripts" / "main.lua").write_text("", encoding="utf-8")
+
+			manager = UE4SSModManager(mods_path)
+
+			assert manager.enabled_mods == ["ExampleMod"]
+
 	def test_replaces_existing_mod_folder_entirely_when_requested(self) -> None:
 		"""Replacing a folder install removes files from the previous copy."""
 		with TemporaryDirectory() as temp_dir:

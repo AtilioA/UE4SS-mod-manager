@@ -1,4 +1,4 @@
-from json import dumps, load
+from json import JSONDecodeError, dumps, load
 from pathlib import Path
 from shutil import copytree, move, rmtree
 from tempfile import TemporaryDirectory
@@ -36,11 +36,10 @@ class UE4SSModManager:
 		"""
 		self.path = path
 
-		enabled_overrides = self._get_enabled_overrides()
-
 		if not path.is_dir() or not path.exists() or not self._has_right_folder_structure(path):
 			raise InvalidModFolderException(f"Path {path} is not a directory.")
 
+		enabled_overrides = self._get_enabled_overrides()
 		self.mods = self.load_mods(enabled_overrides)
 
 	def _get_enabled_overrides(self) -> list[str]:
@@ -48,12 +47,30 @@ class UE4SSModManager:
 
 		if (self.path / "mods.txt").exists():
 			with Path.open(self.path / "mods.txt", encoding="utf-8") as f:
-				output += [line.strip() for line in f.readlines() if line.strip().endswith("1")]
+				output += [line.rsplit(":", 1)[0].strip() for line in f.readlines() if line.strip().endswith("1")]
 
 		if (self.path / "mods.json").exists():
-			with Path.open(self.path / "mods.json", encoding="utf-8-sig") as f:
-				data = load(f)
-				output += [mod["mod_name"] for mod in data if mod.get("mod_enabled", False)]
+			json_path = self.path / "mods.json"
+			try:
+				with Path.open(json_path, encoding="utf-8-sig") as f:
+					data = load(f)
+			except (JSONDecodeError, OSError) as error:
+				logger.warning(f"Could not read enabled mods from {json_path}: {error}. Ignoring mods.json.")
+			else:
+				if not isinstance(data, list):
+					logger.warning(
+						f"Could not read enabled mods from {json_path}: expected a list. Ignoring mods.json.",
+					)
+				else:
+					output += [
+						mod["mod_name"]
+						for mod in data
+						if (
+							isinstance(mod, dict)
+							and isinstance(mod.get("mod_name"), str)
+							and mod.get("mod_enabled", False)
+						)
+					]
 
 		return output
 
