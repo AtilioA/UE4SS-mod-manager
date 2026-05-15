@@ -149,7 +149,7 @@ class UE4SSModManager:
 
 				if files or len(folders) != 1:
 					message = (
-						f"Path or mod '{source_path.name}' doesn't seem to be a valid mod folder. "
+						f"Path or mod '{source_path.name}' doesn't seem to have a valid UE4SS structure. "
 						"Nested mod folders are only supported when no other files are present."
 					)
 					logger.warning(message)
@@ -160,7 +160,7 @@ class UE4SSModManager:
 				return current_path
 
 		message = (
-			f"Path or mod '{source_path.name}' doesn't seem to be a valid mod folder. "
+			f"Path or mod '{source_path.name}' doesn't seem to have a valid UE4SS structure. "
 			f"Nested mod folders are limited to {cls.MAX_NESTED_MOD_DEPTH} wrapper folders."
 		)
 		logger.warning(message)
