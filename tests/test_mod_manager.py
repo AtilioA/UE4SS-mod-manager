@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
+from src.common.exceptions import InvalidModException
 from src.common.mod_manager import UE4SSModManager
 
 
@@ -69,6 +70,75 @@ class UE4SSModManagerArchiveTests(unittest.TestCase):
 			assert mod.name == "ArchiveMod"
 			assert (manager.path / "ArchiveMod" / "scripts" / "main.lua").exists()
 			assert (manager.path / "ArchiveMod" / "enabled.txt").exists()
+
+	def test_installs_folder_with_pure_nested_mod_structure(self) -> None:
+		"""A folder that only nests the real mod folder is unwrapped during install."""
+		with TemporaryDirectory() as temp_dir:
+			root = Path(temp_dir)
+			manager = UE4SSModManager(create_mods_path(root))
+			source_path = root / "UnzippedMod"
+			nested_mod = source_path / "Subnautica2" / "Binaries" / "Win64" / "ue4ss" / "Mods" / "SN2ModSettings"
+			(nested_mod / "Scripts").mkdir(parents=True)
+			(nested_mod / "Scripts" / "main.lua").write_text("", encoding="utf-8")
+
+			mod = manager.install_mod_folder(source_path)
+
+			assert mod.name == "SN2ModSettings"
+			assert (manager.path / "SN2ModSettings" / "Scripts" / "main.lua").exists()
+			assert not (manager.path / "UnzippedMod").exists()
+			assert (manager.path / "SN2ModSettings" / "enabled.txt").exists()
+
+	def test_rejects_nested_folder_with_extra_files_before_mod_folder(self) -> None:
+		"""Nested installs are only accepted when parent folders contain folders only."""
+		with TemporaryDirectory() as temp_dir:
+			root = Path(temp_dir)
+			manager = UE4SSModManager(create_mods_path(root))
+			source_path = root / "UnzippedMod"
+			nested_mod = source_path / "Wrapper" / "RealMod"
+			(nested_mod / "scripts").mkdir(parents=True)
+			(nested_mod / "scripts" / "main.lua").write_text("", encoding="utf-8")
+			(source_path / "README.txt").write_text("extra", encoding="utf-8")
+
+			try:
+				manager.install_mod_folder(source_path)
+			except InvalidModException:
+				return
+
+		raise AssertionError("Expected InvalidModException")
+
+	def test_rejects_nested_folder_with_multiple_child_folders_before_mod_folder(self) -> None:
+		"""Nested installs are rejected when traversal would be ambiguous."""
+		with TemporaryDirectory() as temp_dir:
+			root = Path(temp_dir)
+			manager = UE4SSModManager(create_mods_path(root))
+			source_path = root / "UnzippedMod"
+			nested_mod = source_path / "Wrapper" / "RealMod"
+			(nested_mod / "scripts").mkdir(parents=True)
+			(nested_mod / "scripts" / "main.lua").write_text("", encoding="utf-8")
+			(source_path / "OtherFolder").mkdir(parents=True)
+
+			try:
+				manager.install_mod_folder(source_path)
+			except InvalidModException:
+				return
+
+		raise AssertionError("Expected InvalidModException")
+
+	def test_installs_zip_with_pure_nested_mod_structure(self) -> None:
+		"""Archive installs use the same pure-folder unwrapping as folder installs."""
+		with TemporaryDirectory() as temp_dir:
+			root = Path(temp_dir)
+			manager = UE4SSModManager(create_mods_path(root))
+			archive_path = root / "Nested.zip"
+
+			with ZipFile(archive_path, "w") as archive:
+				archive.writestr("Subnautica2/Binaries/Win64/ue4ss/Mods/SN2ModSettings/Scripts/main.lua", "")
+
+			mod = manager.install_mod_archive(archive_path)
+
+			assert mod.name == "SN2ModSettings"
+			assert (manager.path / "SN2ModSettings" / "Scripts" / "main.lua").exists()
+			assert (manager.path / "SN2ModSettings" / "enabled.txt").exists()
 
 	def test_installing_existing_archive_mod_requires_replace(self) -> None:
 		"""Archive installs use existing duplicate-mod protection."""

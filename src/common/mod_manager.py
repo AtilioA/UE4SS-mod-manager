@@ -6,7 +6,7 @@ from zipfile import ZipFile
 
 from loguru import logger
 
-from src.common.exceptions import InvalidModFolderException
+from src.common.exceptions import InvalidModException, InvalidModFolderException
 from src.common.mod import UE4SSMod
 
 
@@ -22,6 +22,7 @@ class UE4SSModManager:
 		"Keybinds",
 		"ConsoleCommands",
 	)
+	MAX_NESTED_MOD_DEPTH = 15
 
 	def __init__(self, path: Path) -> None:
 		"""
@@ -103,25 +104,67 @@ class UE4SSModManager:
 
 		Raises:
 			FileExistsError: If the mod already exists and replace is false.
+			ValueError: If the source is not a valid mod or pure nested wrapper.
 		"""
 		source_path = source_path.resolve()
-		mod = UE4SSMod.from_path(source_path)
-		target_path = (self.path / source_path.name).resolve()
+		mod_path = self._resolve_mod_path(source_path)
+		mod = UE4SSMod.from_path(mod_path)
+		target_path = (self.path / mod_path.name).resolve()
 
-		if source_path == target_path:
+		if mod_path == target_path:
 			mod.enable()
 			return mod
 
 		if target_path.exists() and not replace:
-			raise FileExistsError(f"Mod {source_path.name} already exists.")
+			raise FileExistsError(f"Mod {mod_path.name} already exists.")
 
 		if target_path.exists():
+			if not target_path.is_relative_to(self.path) or target_path == self.path:
+				raise ValueError(f"Refusing to remove path outside managed mods directory: {target_path}")
 			rmtree(target_path)
 
-		copytree(source_path, target_path)
+		copytree(mod_path, target_path)
 		installed_mod = UE4SSMod.from_path(target_path)
 		installed_mod.enable()
 		return installed_mod
+
+	@classmethod
+	def _resolve_mod_path(cls, source_path: Path) -> Path:
+		"""Find a mod folder, allowing only pure wrapper-folder nesting.
+
+		Returns:
+			The direct or nested path that contains the actual UE4SS mod.
+
+		Raises:
+			InvalidModException: If the source is not a valid mod or pure nested wrapper.
+		"""
+		current_path = source_path.resolve()
+
+		for _ in range(cls.MAX_NESTED_MOD_DEPTH):
+			try:
+				UE4SSMod.from_path(current_path)
+			except InvalidModException as invalid_mod:
+				files = [child for child in current_path.iterdir() if child.is_file()]
+				folders = [child for child in current_path.iterdir() if child.is_dir()]
+
+				if files or len(folders) != 1:
+					message = (
+						f"Path or mod '{source_path.name}' doesn't seem to be a valid mod folder. "
+						"Nested mod folders are only supported when no other files are present."
+					)
+					logger.warning(message)
+					raise InvalidModException(message) from invalid_mod
+
+				current_path = folders[0]
+			else:
+				return current_path
+
+		message = (
+			f"Path or mod '{source_path.name}' doesn't seem to be a valid mod folder. "
+			f"Nested mod folders are limited to {cls.MAX_NESTED_MOD_DEPTH} wrapper folders."
+		)
+		logger.warning(message)
+		raise InvalidModException(message)
 
 	def install_mod_archive(self, source_path: Path, *, replace: bool = False) -> UE4SSMod:
 		"""Install a zipped mod archive into the managed Mods directory.

@@ -56,6 +56,7 @@ Use "Toggle All" to enable/disable all mods at once
 
 - The manager looks for mod folders in the UE4SS/Mods directory
 - Each mod must have a scripts folder with at least one main.lua file
+- Folder and zip installs can nested structures when structure is simple enough
 - Enabling a mod creates an enabled.txt file in its folder and adds entries to mods.json and mods.txt
 - Disabling a mod removes these entries
 
