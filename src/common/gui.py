@@ -25,6 +25,7 @@ _WARNING_POPUP_GEOMETRY = "560x240"
 _WARNING_POPUP_WRAP_LENGTH = 500
 _ERROR_POPUP_GEOMETRY = "460x220"
 _ERROR_POPUP_WRAP_LENGTH = 400
+_GAME_EXECUTABLE_SUFFIXES = ("Win64-Shipping.exe", "WinGDK-Shipping.exe")
 
 
 def find_game_executable(current_dir: Path | None = None) -> Path | None:
@@ -36,7 +37,11 @@ def find_game_executable(current_dir: Path | None = None) -> Path | None:
 	start_dir = current_dir or Path.cwd()
 	for search_dir in (start_dir.parent, start_dir.parent.parent):
 		matches = sorted(
-			(path for path in search_dir.glob("*Win64-Shipping.exe") if path.is_file()),
+			(
+				path
+				for path in search_dir.glob("*Shipping.exe")
+				if path.is_file() and path.name.endswith(_GAME_EXECUTABLE_SUFFIXES)
+			),
 			key=lambda path: path.name.lower(),
 		)
 		if matches:
@@ -414,7 +419,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			if game_executable is None:
 				self.show_error(
 					"Game not found",
-					f"No executable ending with Win64-Shipping.exe was found above {Path.cwd()}.",
+					f"No executable ending with Win64-Shipping.exe or WinGDK-Shipping.exe was found above {Path.cwd()}.",
 				)
 				return
 

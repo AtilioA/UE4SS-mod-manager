@@ -32,6 +32,17 @@ class GameExecutableTests(unittest.TestCase):
 
 			assert find_game_executable(current_dir) == expected
 
+	def test_finds_wingdk_shipping_executable(self) -> None:
+		"""Game Pass WinGDK shipping executables are supported."""
+		with TemporaryDirectory() as temp_dir:
+			root = Path(temp_dir)
+			current_dir = root / "UE4SS"
+			current_dir.mkdir()
+			expected = root / "Game-WinGDK-Shipping.exe"
+			expected.write_text("", encoding="utf-8")
+
+			assert find_game_executable(current_dir) == expected
+
 	def test_returns_none_when_no_shipping_executable_exists(self) -> None:
 		"""Missing game executables are reported as absent."""
 		with TemporaryDirectory() as temp_dir:
