@@ -1,6 +1,6 @@
 from json import dumps, load
 from pathlib import Path
-from shutil import copytree, move
+from shutil import copytree, move, rmtree
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
@@ -114,6 +114,9 @@ class UE4SSModManager:
 
 		if target_path.exists() and not replace:
 			raise FileExistsError(f"Mod {source_path.name} already exists.")
+
+		if target_path.exists():
+			rmtree(target_path)
 
 		copytree(source_path, target_path)
 		installed_mod = UE4SSMod.from_path(target_path)

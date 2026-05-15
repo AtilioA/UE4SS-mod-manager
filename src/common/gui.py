@@ -385,12 +385,12 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 
 			target_path = self.mod_manager.path / source_path.name
 			if target_path.exists() and source_path.resolve() != target_path.resolve():
-				# self.show_warning(
-				# 	"Replace Mod?",
-				# 	f"{source_path.name} already exists. Replace it and enable the new copy?",
-				# 	lambda: self.install_dropped_mod(source_path, replace=True),
-				# 	lambda: None,
-				# )
+				self.show_warning(
+					"Update/Replace mod?",
+					f"{source_path.name} already exists. Replace the entire folder and enable the new mod version?",
+					lambda: self.install_dropped_mod(source_path, replace=True),
+					lambda: None,
+				)
 				return COPY
 
 			self.install_dropped_mod(source_path)
@@ -412,6 +412,18 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			self.populate_mod_list()
 			self.status_bar.configure(text=f"Installed and enabled {installed_mod.name}.")
 			self.update_save_button_state()
+		except FileExistsError as e:
+			if replace:
+				logger.exception(f"Error installing dropped mod folder: {e}")
+				self.show_error("Install failed", str(e))
+				return
+
+			self.show_warning(
+				"Update/Replace mod?",
+				f"{source_path.name} already exists. Replace the entire folder and enable the new mod files?",
+				lambda: self.install_dropped_mod(source_path, replace=True),
+				lambda: None,
+			)
 		except Exception as e:
 			logger.exception(f"Error installing dropped mod folder: {e}")
 			self.show_error("Install failed", str(e))
