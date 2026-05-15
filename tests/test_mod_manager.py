@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
-from src.common.exceptions import InvalidModException
+from src.common.exceptions import InvalidModException, ModAlreadyExistsError
 from src.common.mod_manager import UE4SSModManager
 
 
@@ -159,6 +159,30 @@ class UE4SSModManagerArchiveTests(unittest.TestCase):
 				return
 
 		raise AssertionError("Expected FileExistsError")
+
+	def test_existing_nested_archive_mod_error_uses_resolved_mod_name(self) -> None:
+		"""Duplicate archive warnings use the parsed mod folder instead of the archive name."""
+		with TemporaryDirectory() as temp_dir:
+			root = Path(temp_dir)
+			manager = UE4SSModManager(create_mods_path(root))
+			archive_path = root / "SN2ModSettings V1.0-20-1-1778773091.zip"
+
+			(manager.path / "SN2ModSettings" / "Scripts").mkdir(parents=True)
+			(manager.path / "SN2ModSettings" / "Scripts" / "main.lua").write_text("", encoding="utf-8")
+
+			with ZipFile(archive_path, "w") as archive:
+				archive.writestr("Subnautica2/Binaries/Win64/ue4ss/Mods/SN2ModSettings/Scripts/main.lua", "")
+
+			error = None
+			try:
+				manager.install_mod_archive(archive_path)
+			except ModAlreadyExistsError as caught_error:
+				error = caught_error
+
+			assert error is not None
+			assert error.mod_name == "SN2ModSettings"
+			assert "SN2ModSettings" in str(error)
+			assert archive_path.name not in str(error)
 
 	def test_replaces_existing_archive_mod_entirely_when_requested(self) -> None:
 		"""Replacing an archive install removes files from the previous copy."""

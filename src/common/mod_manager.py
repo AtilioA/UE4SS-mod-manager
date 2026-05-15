@@ -6,7 +6,7 @@ from zipfile import ZipFile
 
 from loguru import logger
 
-from src.common.exceptions import InvalidModException, InvalidModFolderException
+from src.common.exceptions import InvalidModException, InvalidModFolderException, ModAlreadyExistsError
 from src.common.mod import UE4SSMod
 
 
@@ -103,7 +103,7 @@ class UE4SSModManager:
 			The installed and enabled mod.
 
 		Raises:
-			FileExistsError: If the mod already exists and replace is false.
+			ModAlreadyExistsError: If the mod already exists and replace is false.
 			ValueError: If the source is not a valid mod or pure nested wrapper.
 		"""
 		source_path = source_path.resolve()
@@ -116,7 +116,7 @@ class UE4SSModManager:
 			return mod
 
 		if target_path.exists() and not replace:
-			raise FileExistsError(f"Mod {mod_path.name} already exists.")
+			raise ModAlreadyExistsError(mod_path.name)
 
 		if target_path.exists():
 			if not target_path.is_relative_to(self.path) or target_path == self.path:

@@ -15,10 +15,16 @@ except ImportError:
 
 from src.common.config import LuaConfigDocument
 from src.common.config_validation import ConfigValidationError, ConfigValue, validate_config_value
+from src.common.exceptions import ModAlreadyExistsError
 from src.common.mod import UE4SSMod
 from src.common.mod_manager import UE4SSModManager
 
 _DND_BASE = TkinterDnD.DnDWrapper if TkinterDnD else object
+_POPUP_TEXT_FONT_SIZE = 14
+_WARNING_POPUP_GEOMETRY = "560x240"
+_WARNING_POPUP_WRAP_LENGTH = 500
+_ERROR_POPUP_GEOMETRY = "460x220"
+_ERROR_POPUP_WRAP_LENGTH = 400
 
 
 def find_game_executable(current_dir: Path | None = None) -> Path | None:
@@ -263,7 +269,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 
 		self.reset_button = ctk.CTkButton(
 			self.controls_frame,
-			text="Reset",
+			text="Undo",
 			command=self.reset_mods,
 			width=80,
 		)
@@ -435,16 +441,6 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 				self.show_error("Invalid drop", "Drop a mod folder or zip file.")
 				return COPY
 
-			target_path = self.mod_manager.path / source_path.name
-			if target_path.exists() and source_path.resolve() != target_path.resolve():
-				self.show_warning(
-					"Update/Replace mod?",
-					f"{source_path.name} already exists. Replace the entire folder and enable the new mod version?",
-					lambda: self.install_dropped_mod(source_path, replace=True),
-					lambda: None,
-				)
-				return COPY
-
 			self.install_dropped_mod(source_path)
 		except Exception as e:
 			logger.exception(f"Error handling dropped mod folder: {e}")
@@ -464,21 +460,25 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			self.populate_mod_list()
 			self.status_bar.configure(text=f"Installed and enabled {installed_mod.name}.")
 			self.update_save_button_state()
-		except FileExistsError as e:
+		except ModAlreadyExistsError as e:
 			if replace:
 				logger.exception(f"Error installing dropped mod folder: {e}")
 				self.show_error("Install failed", str(e))
 				return
 
-			self.show_warning(
-				"Update/Replace mod?",
-				f"{source_path.name} already exists. Replace the entire folder and enable the new mod files?",
-				lambda: self.install_dropped_mod(source_path, replace=True),
-				lambda: None,
-			)
+			self.show_replace_mod_warning(e.mod_name, lambda: self.install_dropped_mod(source_path, replace=True))
 		except Exception as e:
 			logger.exception(f"Error installing dropped mod folder: {e}")
 			self.show_error("Install failed", str(e))
+
+	def show_replace_mod_warning(self, mod_name: str, on_ok: Callable[[], None]) -> None:
+		"""Confirm replacing an existing mod using the parsed mod folder name."""
+		self.show_warning(
+			"Update/Replace mod?",
+			f"{mod_name} already exists.\nReplace the entire folder and enable the new files?",
+			on_ok,
+			lambda: None,
+		)
 
 	def populate_mod_list(self) -> None:
 		"""Populate the mod list with checkboxes for each mod."""
@@ -718,7 +718,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		"""Show a warning popup with OK and Cancel buttons."""
 		warning_window = ctk.CTkToplevel(self)
 		warning_window.title(title)
-		warning_window.geometry("450x200")
+		warning_window.geometry(_WARNING_POPUP_GEOMETRY)
 		warning_window.transient(self)
 		warning_window.grab_set()
 		warning_window.attributes("-topmost", True)
@@ -733,7 +733,13 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		frame = ctk.CTkFrame(warning_window)
 		frame.pack(fill="both", expand=True, padx=20, pady=20)
 
-		warning_label = ctk.CTkLabel(frame, text=message, wraplength=410, justify="left")
+		warning_label = ctk.CTkLabel(
+			frame,
+			text=message,
+			wraplength=_WARNING_POPUP_WRAP_LENGTH,
+			justify="left",
+			font=ctk.CTkFont(size=_POPUP_TEXT_FONT_SIZE),
+		)
 		warning_label.pack(padx=10, pady=(10, 20))
 
 		button_frame = ctk.CTkFrame(frame)
@@ -873,7 +879,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		"""Show an error popup with the given title and message."""
 		error_window = ctk.CTkToplevel(self)
 		error_window.title(title)
-		error_window.geometry("400x200")
+		error_window.geometry(_ERROR_POPUP_GEOMETRY)
 		error_window.transient(self)
 		error_window.grab_set()
 		error_window.attributes("-topmost", True)
@@ -888,7 +894,13 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		frame = ctk.CTkFrame(error_window)
 		frame.pack(fill="both", expand=True, padx=20, pady=20)
 
-		error_label = ctk.CTkLabel(frame, text=message, wraplength=360, justify="left")
+		error_label = ctk.CTkLabel(
+			frame,
+			text=message,
+			wraplength=_ERROR_POPUP_WRAP_LENGTH,
+			justify="left",
+			font=ctk.CTkFont(size=_POPUP_TEXT_FONT_SIZE),
+		)
 		error_label.pack(padx=10, pady=(10, 20))
 
 		ok_button = ctk.CTkButton(frame, text="OK", command=error_window.destroy, width=100)
