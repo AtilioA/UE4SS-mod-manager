@@ -1,6 +1,6 @@
 [project]
 name = "ue4ss-modmanager"
-version = "0.3.0"
+version = "1.2.0"
 description = "UE4SS mod manager, forked from gtkacz's."
 readme = "README.md"
 requires-python = ">=3.12"
