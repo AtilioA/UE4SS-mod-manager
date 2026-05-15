@@ -38,6 +38,57 @@ def find_game_executable(current_dir: Path | None = None) -> Path | None:
 	return None
 
 
+class ToolTip:
+	"""Simple ToolTip for CustomTkinter widgets."""
+
+	def __init__(self, widget: object, text: str) -> None:
+		"""Initialize the ToolTip."""
+		self.widget = widget
+		self.text = text
+		self.tooltip_window = None
+		self.widget.bind("<Enter>", self.enter)
+		self.widget.bind("<Leave>", self.leave)
+
+	def enter(self, event: object = None) -> None:
+		"""Schedule tooltip appearance on mouse enter."""
+		self.schedule_id = self.widget.after(100, self.show_tooltip)
+
+	def leave(self, event: object = None) -> None:
+		"""Cancel schedule and hide tooltip on mouse leave."""
+		if hasattr(self, "schedule_id"):
+			self.widget.after_cancel(self.schedule_id)
+		self.hide_tooltip()
+
+	def show_tooltip(self) -> None:
+		"""Show the tooltip window."""
+		if self.tooltip_window or not self.text:
+			return
+		x = self.widget.winfo_rootx() + 25
+		y = self.widget.winfo_rooty() + 30
+		self.tooltip_window = tw = ctk.CTkToplevel(self.widget)
+		tw.wm_overrideredirect(True)
+		tw.wm_geometry(f"+{x}+{y}")
+
+		label = ctk.CTkLabel(
+			tw,
+			text=self.text,
+			justify="left",
+			fg_color=("gray85", "gray25"),
+			corner_radius=4,
+			padx=5,
+			pady=3,
+			font=ctk.CTkFont(size=11),
+		)
+		label.pack()
+
+	def hide_tooltip(self) -> None:
+		"""Hide and destroy the tooltip window."""
+		tw = self.tooltip_window
+		self.tooltip_window = None
+		if tw:
+			tw.destroy()
+
+
 class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 	"""A GUI for managing UE4SS mods."""
 
@@ -241,7 +292,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		self.save_enabled_txt_var = ctk.BooleanVar(value=True)
 		self.save_enabled_txt = ctk.CTkSwitch(
 			self.save_options_frame,
-			text="Save enabled.txt (recommended)",
+			text="Save enabled.txt",
 			variable=self.save_enabled_txt_var,
 			onvalue=True,
 			offvalue=False,
@@ -249,6 +300,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			width=24,
 		)
 		self.save_enabled_txt.pack(side="left", padx=10, pady=8)
+		ToolTip(self.save_enabled_txt, "enabled.txt is fine for most load orders")
 
 		self.save_mods_json_var = ctk.BooleanVar(value=False)
 		self.save_mods_json = ctk.CTkSwitch(
