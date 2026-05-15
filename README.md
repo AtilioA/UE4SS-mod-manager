@@ -2,13 +2,11 @@
 
 A simple GUI application for managing [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS) mods in Unreal Engine games.
 
-![UE4SS Logo](assets/img/ue.svg)
-
 ## Features
 
 - Enable/disable mods with a single click
 - Toggle all mods on/off with one button
-- Drag and drop a mod folder to install and enable it
+- Drag and drop a mod folder or zip to install and enable it
 - Configurable save options:
   - Individual enabled.txt files
   - mods.json for UE4SS
@@ -16,28 +14,37 @@ A simple GUI application for managing [UE4SS](https://github.com/UE4SS-RE/RE-UE4
 - Modern dark mode UI
 - Simple, intuitive interface
 
-## Installation
+## Installation / building
+
+To get started, you only really need to have [UE4SS already installed](https://github.com/UE4SS-RE/RE-UE4SS#basic-installation).
+
+### Requirements
+
+- Windows 10/11
+- UE4SS installed in your game directory
 
 ### Option 1: Pre-built executable
 
-1. Download the latest release from the [Releases page](https://github.com/gmtkacz/ue4ss_modmanager/releases)
-2. Place the executable in your game's `UE4SS/Mods` folder
+1. Download the latest release from the [Nexus page](https://www.nexusmods.com/subnautica2/mods/34)
+2. Place the executable in your game's `ue4ss/Mods` folder
 3. Run the executable
 
-### Option 2: Run from source
+### Option 2: Building from source
 
-1. Clone this repository
-2. Install dependencies:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Run the application:
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if needed
+2. Install build dependencies:
 
    ```bash
-   python src/main.py
+   uv sync
    ```
+
+3. Build the Windows executable:
+
+   ```bash
+   uv run build
+   ```
+
+The executable will be created in the `dist/` folder. Move it to your game's `ue4ss/Mods` folder and run it.
 
 ## Usage
 
@@ -52,28 +59,23 @@ A simple GUI application for managing [UE4SS](https://github.com/UE4SS-RE/RE-UE4
 6. Click "Save Changes" to apply your configuration
 Use "Toggle All" to enable/disable all mods at once
 
-## How It Works
+## How it works
 
 - The manager looks for mod folders in the UE4SS/Mods directory
 - Each mod must have a scripts folder with at least one main.lua file
 - Folder and zip installs can nested structures when structure is simple enough
 - Enabling a mod creates an enabled.txt file in its folder and adds entries to mods.json and mods.txt
-- Disabling a mod removes these entries
-
-## Requirements
-
-- Windows 10/11
-- UE4SS installed in your game directory
+- Disabling a mod removes these text entries
 
 ## Development
 
-### Setup Development Environment
+### Setup development environment
 
 1. Clone the repository
 2. Install development dependencies:
 
    ```bash
-   pip install -r requirements.dev.txt
+   uv sync --dev
    ```
 
 3. Install pre-commit hooks:
@@ -81,10 +83,6 @@ Use "Toggle All" to enable/disable all mods at once
    ```bash
    pre-commit install
    ```
-
-### Building from Source
-
-See the [Building Guide](BUILDING.md) for instructions on compiling to an executable.
 
 ## Contributing
 
