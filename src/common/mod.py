@@ -20,14 +20,12 @@ class UE4SSMod:
 	config_path: Path | None = None
 
 	@classmethod
-	def from_path(cls, path: Path, *, override_enabled: bool = False) -> "UE4SSMod":
+	def from_path(cls, path: Path) -> "UE4SSMod":
 		"""
 		Constructs a UE4SSMod object from a given path.
 
 		Args:
 			path: The path to the mod directory.
-			override_enabled (optional): If True, the mod will be considered enabled even if
-				there is no enabled.txt file. Defaults to False.
 
 		Returns:
 			An instance of the UE4SSMod class with the mod's name, enabled status, and list of scripts.
@@ -55,14 +53,19 @@ class UE4SSMod:
 		scripts = lua + dll
 
 		if not scripts:
-			raise InvalidModException(f"Path or mod '{name}' has no scripts. Please verify you're importing the correct mod.")
+			raise InvalidModException(
+				f"Path or mod '{name}' has no scripts. Please verify you're importing the correct mod.",
+			)
 
 		if "main.lua" not in scripts and "main.dll" not in scripts:
-			raise InvalidModException(f"Path or mod '{name}' does not have a main file: {scripts}. Please verify you're importing the correct mod.")
+			raise InvalidModException(
+				f"Path or mod '{name}' does not have a main file: {scripts}. "
+				"Please verify you're importing the correct mod.",
+			)
 
 		lang = "lua" if "main.lua" in scripts else "cpp"
 
-		enabled = (path / "enabled.txt").exists() or override_enabled
+		enabled = (path / "enabled.txt").exists()
 		config_path = next(
 			(
 				script

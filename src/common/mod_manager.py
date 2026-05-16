@@ -1,4 +1,4 @@
-from json import JSONDecodeError, dumps, load
+from json import dumps
 from pathlib import Path
 from shutil import copytree, move, rmtree
 from tempfile import TemporaryDirectory
@@ -39,40 +39,7 @@ class UE4SSModManager:
 		if not path.is_dir() or not path.exists() or not self._has_right_folder_structure(path):
 			raise InvalidModFolderException(f"Path {path} is not a directory.")
 
-		enabled_overrides = self._get_enabled_overrides()
-		self.mods = self.load_mods(enabled_overrides)
-
-	def _get_enabled_overrides(self) -> list[str]:
-		output = []
-
-		if (self.path / "mods.txt").exists():
-			with Path.open(self.path / "mods.txt", encoding="utf-8") as f:
-				output += [line.rsplit(":", 1)[0].strip() for line in f.readlines() if line.strip().endswith("1")]
-
-		if (self.path / "mods.json").exists():
-			json_path = self.path / "mods.json"
-			try:
-				with Path.open(json_path, encoding="utf-8-sig") as f:
-					data = load(f)
-			except (JSONDecodeError, OSError) as error:
-				logger.warning(f"Could not read enabled mods from {json_path}: {error}. Ignoring mods.json.")
-			else:
-				if not isinstance(data, list):
-					logger.warning(
-						f"Could not read enabled mods from {json_path}: expected a list. Ignoring mods.json.",
-					)
-				else:
-					output += [
-						mod["mod_name"]
-						for mod in data
-						if (
-							isinstance(mod, dict)
-							and isinstance(mod.get("mod_name"), str)
-							and mod.get("mod_enabled", False)
-						)
-					]
-
-		return output
+		self.mods = self.load_mods()
 
 	@staticmethod
 	def _has_right_folder_structure(path: Path) -> bool:
@@ -87,7 +54,7 @@ class UE4SSModManager:
 		"""
 		return path.stem.upper() == "MODS" and path.parent.stem.upper() == "UE4SS"
 
-	def load_mods(self, enabled_overrides: list[str] | None = None) -> list[UE4SSMod]:
+	def load_mods(self) -> list[UE4SSMod]:
 		"""
 		Loads all mods from the specified path.
 
@@ -96,14 +63,10 @@ class UE4SSModManager:
 		"""
 		output = []
 
-		if enabled_overrides is None:
-			enabled_overrides = []
-
 		for mod_path in self.path.iterdir():
 			if mod_path.is_dir() and mod_path.stem.upper() != "SHARED":
 				try:
-					override_enabled = mod_path.stem in enabled_overrides
-					mod = UE4SSMod.from_path(mod_path, override_enabled=override_enabled)
+					mod = UE4SSMod.from_path(mod_path)
 					if mod:
 						mod.is_native = mod.name in self.NATIVE_MODS
 						output.append(mod)
