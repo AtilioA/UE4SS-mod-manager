@@ -195,7 +195,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 				pil_image = Image.open(logo_path)
 				logo_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image, size=(180, 54))
 				self.logo_label = ctk.CTkLabel(self.main_frame, image=logo_image, text="")
-				self.logo_label.pack(pady=(0, 15))
+				self.logo_label.pack(pady=(15, 15))
 				logger.debug(f"Set logo image: {logo_path}")
 			except Exception as e:
 				logger.error(f"Failed to load logo image: {e}")
@@ -215,7 +215,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			text="Subnautica 2 UE4SS Mod Manager",
 			font=ctk.CTkFont(size=24, weight="bold"),
 		)
-		self.title_label.pack(pady=(0, 15))
+		self.title_label.pack(pady=(15, 15))
 
 	def _create_search_filter(self) -> None:
 		"""Create the search filter components."""
@@ -367,7 +367,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			text=f"Loaded {len(self.mod_manager.mods)} mods",
 			font=ctk.CTkFont(size=12),
 		)
-		self.status_bar.pack(pady=(8, 0), anchor="w")
+		self.status_bar.pack(padx=10, pady=(8, 0), anchor="w")
 
 	def toggle_native_mods_visibility(self) -> None:
 		"""Toggle visibility of native mods with a warning."""
@@ -623,7 +623,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 		frame.pack(fill="both", expand=True, padx=20, pady=20)
 
 		title = ctk.CTkLabel(frame, text=f"Configure {mod.name}", font=ctk.CTkFont(size=18, weight="bold"))
-		title.pack(anchor="w", padx=10, pady=(10, 5))
+		title.pack(anchor="w", padx=10, pady=(15, 10))
 
 		config_path_label = ctk.CTkLabel(
 			frame,
