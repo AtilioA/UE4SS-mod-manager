@@ -266,7 +266,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 
 		self.refresh_button = ctk.CTkButton(
 			self.controls_frame,
-			text="Refresh",
+			text="Refresh list",
 			command=self.refresh_mods,
 			width=80,
 		)
@@ -282,7 +282,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 
 		self.launch_game_button = ctk.CTkButton(
 			self.controls_frame,
-			text="Launch Game",
+			text="Launch game",
 			command=self.launch_game,
 			width=110,
 		)
@@ -311,7 +311,7 @@ class UE4SSModManagerGUI(ctk.CTk, _DND_BASE):
 			width=24,
 		)
 		self.save_enabled_txt.pack(side="left", padx=10, pady=8)
-		ToolTip(self.save_enabled_txt, "enabled.txt is fine for most load orders")
+		ToolTip(self.save_enabled_txt, "enabled.txt method is fine for most load orders")
 
 		self.save_mods_json_var = ctk.BooleanVar(value=False)
 		self.save_mods_json = ctk.CTkSwitch(
