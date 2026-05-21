@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subnautica 2 UE4SS Mod Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  
+  <!-- DRAG AND DROP OVERLAY -->
+  <div id="dnd-overlay" class="dnd-overlay hidden">
+    <div class="dnd-box">
+      <div class="dnd-icon">📁</div>
+      <h2>Drop Mod Folder or ZIP Archive</h2>
+      <p>Release to install and enable this mod automatically</p>
+    </div>
+  </div>
+
+  <!-- MAIN APP CONTAINER -->
+  <main id="app-container">
+    
+    <!-- WELCOME / FOLDER PICKER SCREEN -->
+    <section id="welcome-screen" class="screen hidden">
+      <div class="welcome-card">
+        <div class="welcome-logo">🎮</div>
+        <h1>UE4SS Mod Manager</h1>
+        <p class="welcome-desc">
+          Manage your Unreal Engine game mods with performance, security, and elegance.
+        </p>
+        <div class="welcome-alert">
+          <strong>Folder Not Auto-Detected</strong><br>
+          Please select the <code>UE4SS/Mods</code> folder inside your game installation directory to get started.
+        </div>
+        <button id="btn-pick-folder" class="btn btn-primary btn-large">
+          <span>Select Mods Directory</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- MOD MANAGER SCREEN -->
+    <section id="manager-screen" class="screen hidden">
+      <!-- HEADER -->
+      <header class="app-header">
+        <div class="header-logo">
+          <span class="logo-text">MOD MANAGER</span>
+        </div>
+        <div class="header-path-box">
+          <span class="path-label">Active Directory:</span>
+          <span id="txt-active-path" class="path-value">...</span>
+          <button id="btn-change-folder" class="btn-icon" title="Change Folder Path">📁</button>
+        </div>
+      </header>
+
+      <!-- CONTROL BAR -->
+      <section class="controls-card">
+        <div class="search-row">
+          <div class="search-input-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="inp-search" placeholder="Search mods by name...">
+            <button id="btn-clear-search" class="clear-button hidden">×</button>
+          </div>
+          <div class="switch-wrapper">
+            <label class="switch-container">
+              <input type="checkbox" id="chk-show-native">
+              <span class="switch-slider"></span>
+            </label>
+            <span class="switch-label">Show native mods</span>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <div class="checkbox-wrapper">
+            <label class="checkbox-container">
+              <input type="checkbox" id="chk-toggle-all">
+              <span class="checkbox-checkmark"></span>
+              <span class="checkbox-label">Toggle all</span>
+            </label>
+          </div>
+          <div class="button-group">
+            <button id="btn-open-folder-main" class="btn btn-secondary" title="Open Mods Folder in Explorer"><span class="btn-emoji">📂</span> Open Folder</button>
+            <button id="btn-refresh" class="btn btn-secondary">Refresh</button>
+            <button id="btn-undo" class="btn btn-secondary">Undo</button>
+            <button id="btn-launch" class="btn btn-action">
+              <span class="launch-icon">🚀</span> Launch Game
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCROLLABLE MOD LIST -->
+      <section class="list-card">
+        <div class="list-header">
+          <h2>Mod Files</h2>
+          <span id="txt-list-count" class="list-count">Loading mods...</span>
+        </div>
+        <div id="list-container" class="list-container">
+          <!-- Mod cards will be generated dynamically here -->
+          <div class="list-empty">
+            <span class="empty-icon">📁</span>
+            <p>No mods detected. Drag & drop a mod or place zip files in the Mods directory.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SAVE OPTIONS BAR -->
+      <footer class="footer-card">
+        <div class="save-switches">
+          <div class="switch-wrapper">
+            <label class="switch-container">
+              <input type="checkbox" id="chk-save-enabled" checked>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="switch-label" title="Saves individual enabled.txt inside each mod folder">enabled.txt</span>
+          </div>
+          <div class="switch-wrapper">
+            <label class="switch-container">
+              <input type="checkbox" id="chk-save-json">
+              <span class="switch-slider"></span>
+            </label>
+            <span class="switch-label" title="Saves central mods.json list used by UE4SS">mods.json</span>
+          </div>
+          <div class="switch-wrapper">
+            <label class="switch-container">
+              <input type="checkbox" id="chk-save-txt">
+              <span class="switch-slider"></span>
+            </label>
+            <span class="switch-label" title="Saves central mods.txt list used by UE4SS">mods.txt</span>
+          </div>
+        </div>
+        <button id="btn-save" class="btn btn-primary" disabled>
+          <span>Save Changes</span>
+        </button>
+      </footer>
+    </section>
+
+  </main>
+
+  <!-- LUA CONFIGURATION MODAL -->
+  <div id="modal-config" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2 id="txt-modal-title">Configure Mod</h2>
+          <p id="txt-modal-subtitle" class="modal-subtitle">path/to/scripts/config.lua</p>
+        </div>
+        <button id="btn-modal-close" class="modal-close-btn">×</button>
+      </div>
+      <div id="modal-fields-container" class="modal-body">
+        <!-- Configuration settings fields will be loaded here dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button id="btn-modal-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-modal-save" class="btn btn-primary">Save Config</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NATIVE-WARNING & CONFIRMATION DIALOG MODAL -->
+  <div id="modal-confirm" class="modal-backdrop hidden">
+    <div class="modal-dialog">
+      <h3 id="txt-confirm-title">Warning</h3>
+      <p id="txt-confirm-desc">Are you sure you want to perform this action?</p>
+      <div class="dialog-footer">
+        <button id="btn-confirm-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-confirm-ok" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

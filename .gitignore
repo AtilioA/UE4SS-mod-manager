@@ -173,3 +173,11 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Node.js
+node_modules/
+dist/
+
+# Rust / Tauri
+target/
+src-tauri/target/
