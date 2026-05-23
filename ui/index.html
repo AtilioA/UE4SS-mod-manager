@@ -82,6 +82,7 @@
           </div>
           <div class="button-group">
             <button id="btn-open-folder-main" class="btn btn-secondary" title="Open Mods Folder in Explorer"><span class="btn-emoji">📂</span> Open Folder</button>
+            <button id="btn-ue4ss-settings" class="btn btn-secondary" title="Configure global UE4SS-settings.ini"><span class="btn-emoji">⚙️</span> UE4SS Settings</button>
             <button id="btn-refresh" class="btn btn-secondary">Refresh</button>
             <button id="btn-undo" class="btn btn-secondary">Undo</button>
             <button id="btn-launch" class="btn btn-action">
@@ -155,6 +156,26 @@
       <div class="modal-footer">
         <button id="btn-modal-cancel" class="btn btn-secondary">Cancel</button>
         <button id="btn-modal-save" class="btn btn-primary">Save Config</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- UE4SS SETTINGS INI MODAL -->
+  <div id="modal-ue4ss-settings" class="modal-backdrop hidden">
+    <div class="modal-card" style="border-color: var(--border-glass-purple); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 25px var(--accent-purple-glow);">
+      <div class="modal-header">
+        <div>
+          <h2>Configure UE4SS Settings</h2>
+          <p id="txt-ue4ss-settings-subtitle" class="modal-subtitle">path/to/UE4SS-settings.ini</p>
+        </div>
+        <button id="btn-ue4ss-settings-close" class="modal-close-btn">×</button>
+      </div>
+      <div id="modal-ue4ss-settings-fields-container" class="modal-body">
+        <!-- INI fields will be loaded here dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button id="btn-ue4ss-settings-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-ue4ss-settings-save" class="btn btn-primary" style="background: var(--accent-purple); color: var(--bg-base); box-shadow: 0 4px 14px var(--accent-purple-glow);">Save Settings</button>
       </div>
     </div>
   </div>

@@ -12,6 +12,8 @@ let state = {
   activeConfigPath: '',
   configEntries: [],
   originalConfigEntries: [], // Deep copy to check for config modifications
+  ue4ssSettingsEntries: [],
+  originalUe4ssSettingsEntries: [], // Deep copy to check for settings modifications
 };
 
 // DOM ELEMENT REFERENCES
@@ -60,6 +62,15 @@ const el = {
   // Drag and Drop
   dndOverlay: document.getElementById('dnd-overlay'),
   toastContainer: document.getElementById('toast-container'),
+  
+  // UE4SS Settings Modal
+  btnUe4ssSettings: document.getElementById('btn-ue4ss-settings'),
+  modalUe4ssSettings: document.getElementById('modal-ue4ss-settings'),
+  txtUe4ssSettingsSubtitle: document.getElementById('txt-ue4ss-settings-subtitle'),
+  modalUe4ssSettingsFieldsContainer: document.getElementById('modal-ue4ss-settings-fields-container'),
+  btnUe4ssSettingsClose: document.getElementById('btn-ue4ss-settings-close'),
+  btnUe4ssSettingsCancel: document.getElementById('btn-ue4ss-settings-cancel'),
+  btnUe4ssSettingsSave: document.getElementById('btn-ue4ss-settings-save'),
 };
 
 // --- TOAST NOTIFICATIONS ---
@@ -276,6 +287,26 @@ async function runGame() {
   }
 }
 
+async function deleteMod(mod) {
+  const ok = await showConfirm(
+    'Delete Mod Permanently?',
+    `Are you sure you want to permanently delete "${mod.name}"?\n\nThis will delete all scripts and configuration files for this mod from your hard drive. This action cannot be undone!`
+  );
+  if (!ok) return;
+  
+  try {
+    showToast(`Deleting "${mod.name}"...`, 'info');
+    await invoke('uninstall_mod', {
+      modsFolder: state.modsFolder,
+      modName: mod.name,
+    });
+    showToast(`Mod "${mod.name}" was permanently deleted.`, 'success');
+    await loadMods(); // Reload mods from disk to refresh the state & UI
+  } catch (err) {
+    showToast(`Failed to delete mod: ${err}`, 'error');
+  }
+}
+
 // --- LUA CONFIG ACTIONS ---
 async function openConfigModal(mod) {
   if (!mod.config_path) return;
@@ -350,6 +381,163 @@ async function saveConfig() {
   }
 }
 
+// --- UE4SS SETTINGS INI ACTIONS ---
+async function openUe4ssSettingsModal() {
+  if (!state.modsFolder) return;
+  
+  try {
+    showToast('Loading UE4SS configuration...', 'info', 1000);
+    const entries = await invoke('load_ue4ss_settings', { modsFolder: state.modsFolder });
+    state.ue4ssSettingsEntries = entries.map(e => ({ ...e }));
+    state.originalUe4ssSettingsEntries = entries.map(e => ({ ...e }));
+    
+    // Resolve the subtitle path: usually parent of Mods + UE4SS-settings.ini
+    const parts = state.modsFolder.split(/[\\/]/);
+    const parentPath = parts.slice(0, -1).join('/');
+    el.txtUe4ssSettingsSubtitle.textContent = `${parentPath}/UE4SS-settings.ini`;
+    
+    renderUe4ssSettingsFields();
+    el.modalUe4ssSettings.classList.remove('hidden');
+  } catch (err) {
+    showToast(`Failed to parse settings: ${err}`, 'error');
+  }
+}
+
+function closeUe4ssSettingsModal() {
+  el.modalUe4ssSettings.classList.add('hidden');
+  state.ue4ssSettingsEntries = [];
+  state.originalUe4ssSettingsEntries = [];
+}
+
+async function saveUe4ssSettings() {
+  if (!state.modsFolder) return;
+  
+  try {
+    const updates = {};
+    let hasChanges = false;
+    
+    for (const entry of state.ue4ssSettingsEntries) {
+      const orig = state.originalUe4ssSettingsEntries.find(o => o.section === entry.section && o.key === entry.key);
+      const inputEl = document.getElementById(`ini-input-${entry.section}-${entry.key}`);
+      
+      let newValue = entry.value;
+      const isBoolVal = entry.value.toLowerCase() === 'true' || entry.value.toLowerCase() === 'false' || entry.value === '0' || entry.value === '1';
+      
+      if (isBoolVal) {
+        if (entry.value === '0' || entry.value === '1') {
+          newValue = inputEl.checked ? '1' : '0';
+        } else {
+          newValue = inputEl.checked ? 'true' : 'false';
+        }
+      } else {
+        newValue = inputEl.value;
+      }
+      
+      if (!orig || orig.value !== newValue) {
+        // Use the composite section/key key to ensure exact uniqueness
+        updates[`${entry.section}/${entry.key}`] = newValue;
+        hasChanges = true;
+      }
+    }
+    
+    if (hasChanges) {
+      await invoke('save_ue4ss_settings', {
+        modsFolder: state.modsFolder,
+        updates,
+      });
+      showToast('UE4SS configuration saved successfully!', 'success');
+    } else {
+      showToast('No settings changes detected.', 'info');
+    }
+    
+    closeUe4ssSettingsModal();
+  } catch (err) {
+    showToast(`Failed to save settings: ${err}`, 'error');
+  }
+}
+
+function renderUe4ssSettingsFields() {
+  el.modalUe4ssSettingsFieldsContainer.innerHTML = '';
+  
+  if (state.ue4ssSettingsEntries.length === 0) {
+    el.modalUe4ssSettingsFieldsContainer.innerHTML = `
+      <div class="empty-state" style="color: var(--text-muted); text-align: center; padding: 20px;">No settings extracted from UE4SS-settings.ini.</div>
+    `;
+    return;
+  }
+  
+  // Group entries by Section
+  const grouped = {};
+  state.ue4ssSettingsEntries.forEach(entry => {
+    if (!grouped[entry.section]) {
+      grouped[entry.section] = [];
+    }
+    grouped[entry.section].push(entry);
+  });
+  
+  for (const section in grouped) {
+    const sectionWrapper = document.createElement('div');
+    sectionWrapper.className = 'config-section-group';
+    sectionWrapper.style.marginBottom = '20px';
+    
+    const sectionHeader = document.createElement('h3');
+    sectionHeader.textContent = section;
+    sectionHeader.style.fontFamily = 'var(--font-display)';
+    sectionHeader.style.fontSize = '14px';
+    sectionHeader.style.fontWeight = '700';
+    sectionHeader.style.color = 'var(--accent-purple)';
+    sectionHeader.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+    sectionHeader.style.paddingBottom = '6px';
+    sectionHeader.style.marginBottom = '12px';
+    
+    sectionWrapper.appendChild(sectionHeader);
+    
+    grouped[section].forEach(entry => {
+      const fieldWrapper = document.createElement('div');
+      fieldWrapper.className = 'config-field-row';
+      fieldWrapper.style.marginBottom = '8px';
+      
+      let inputHtml = '';
+      const descText = entry.comment ? `<p class="field-description">${entry.comment.replace(/\n/g, '<br>')}</p>` : '';
+      
+      // Determine field type
+      const valLower = entry.value.toLowerCase();
+      const isBool = valLower === 'true' || valLower === 'false' || entry.value === '0' || entry.value === '1';
+      
+      if (isBool) {
+        const isChecked = valLower === 'true' || entry.value === '1';
+        inputHtml = `
+          <div class="field-input-wrapper">
+            <label class="switch-container">
+              <input type="checkbox" id="ini-input-${entry.section}-${entry.key}" ${isChecked ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        `;
+      } else {
+        // Fallback text input
+        inputHtml = `
+          <div class="field-input-wrapper">
+            <input type="text" class="input-text" id="ini-input-${entry.section}-${entry.key}" value="${escapeHtml(entry.value)}">
+          </div>
+        `;
+      }
+      
+      fieldWrapper.innerHTML = `
+        <div class="field-info">
+          <label class="field-label" for="ini-input-${entry.section}-${entry.key}">${entry.key}</label>
+          ${descText}
+        </div>
+        ${inputHtml}
+      `;
+      
+      sectionWrapper.appendChild(fieldWrapper);
+    });
+    
+    el.modalUe4ssSettingsFieldsContainer.appendChild(sectionWrapper);
+  }
+}
+
 // --- RENDERING VIEWS ---
 function renderMods() {
   el.listContainer.innerHTML = '';
@@ -410,6 +598,9 @@ function renderMods() {
       ? `<button class="btn btn-secondary btn-small btn-config" data-name="${mod.name}">⚙️ Configure</button>`
       : '';
       
+    // Uninstall/Delete Button
+    const deleteBtn = `<button class="btn btn-danger btn-small btn-delete" data-name="${mod.name}">🗑️ Delete</button>`;
+      
     card.innerHTML = `
       <div class="card-left">
         <label class="checkbox-container">
@@ -424,8 +615,9 @@ function renderMods() {
           ${scriptsInfo}
         </div>
       </div>
-      <div class="card-right">
+      <div class="card-right" style="display: flex; gap: 8px; align-items: center;">
         ${configBtn}
+        ${deleteBtn}
       </div>
     `;
     
@@ -453,6 +645,10 @@ function renderMods() {
       const btn = card.querySelector('.btn-config');
       btn.addEventListener('click', () => openConfigModal(mod));
     }
+    
+    // Bind delete button
+    const deleteBtnEl = card.querySelector('.btn-delete');
+    deleteBtnEl.addEventListener('click', () => deleteMod(mod));
     
     el.listContainer.appendChild(card);
   });
@@ -703,11 +899,20 @@ if (!window.__initialized) {
   el.btnModalCancel.addEventListener('click', closeConfigModal);
   el.btnModalSave.addEventListener('click', saveConfig);
 
+  // UE4SS Settings modal events
+  el.btnUe4ssSettings.addEventListener('click', openUe4ssSettingsModal);
+  el.btnUe4ssSettingsClose.addEventListener('click', closeUe4ssSettingsModal);
+  el.btnUe4ssSettingsCancel.addEventListener('click', closeUe4ssSettingsModal);
+  el.btnUe4ssSettingsSave.addEventListener('click', saveUe4ssSettings);
+
   // ESC key listener for modals
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (!el.modalConfig.classList.contains('hidden')) {
         closeConfigModal();
+      }
+      if (!el.modalUe4ssSettings.classList.contains('hidden')) {
+        closeUe4ssSettingsModal();
       }
       if (!el.modalConfirm.classList.contains('hidden')) {
         el.modalConfirm.classList.add('hidden');

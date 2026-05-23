@@ -39,3 +39,11 @@ impl Default for AppConfig {
         }
     }
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct Ue4ssSettingsEntry {
+    pub section: String,
+    pub key: String,
+    pub value: String, // Keep as string; frontend can render appropriate inputs
+    pub comment: String,
+}

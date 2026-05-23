@@ -20,7 +20,10 @@ fn main() {
             commands::pick_mods_folder,
             commands::open_mods_folder,
             commands::load_app_config,
-            commands::save_app_config
+            commands::save_app_config,
+            commands::uninstall_mod,
+            commands::load_ue4ss_settings,
+            commands::save_ue4ss_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

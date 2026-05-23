@@ -532,3 +532,61 @@ pub fn save_app_config(config: &crate::mod_manager::models::AppConfig) -> Result
     serde_json::to_writer_pretty(writer, config)?;
     Ok(())
 }
+
+pub fn uninstall_mod<P: AsRef<Path>>(mods_folder: P, mod_name: &str) -> Result<(), ModError> {
+    let mods_folder = mods_folder.as_ref();
+    let mod_path = mods_folder.join(mod_name);
+
+    if !mod_path.exists() {
+        return Ok(());
+    }
+
+    // Security check: Refuse to remove paths outside of the managed mods folder
+    let canonical_folder = mods_folder.canonicalize()?;
+    let canonical_mod = mod_path.canonicalize()?;
+    if !canonical_mod.starts_with(&canonical_folder) || canonical_mod == canonical_folder {
+        return Err(ModError::InvalidMod(format!(
+            "Refusing to remove path outside managed mods directory: {}",
+            mod_path.display()
+        )));
+    }
+
+    fs::remove_dir_all(&mod_path)?;
+    Ok(())
+}
+
+fn get_ue4ss_settings_path(mods_folder: &Path) -> Result<PathBuf, ModError> {
+    // 1. Check mods_folder.parent()/UE4SS-settings.ini
+    if let Some(parent) = mods_folder.parent() {
+        let path = parent.join("UE4SS-settings.ini");
+        if path.is_file() {
+            return Ok(path);
+        }
+    }
+    
+    // 2. Check if it's directly inside mods_folder (sometimes people put it there, though rare)
+    let path = mods_folder.join("UE4SS-settings.ini");
+    if path.is_file() {
+        return Ok(path);
+    }
+    
+    // 3. Fallback: return not found error
+    Err(ModError::InvalidMod("UE4SS-settings.ini not found in parent directory of Mods. Please ensure UE4SS is installed correctly.".to_string()))
+}
+
+pub fn load_ue4ss_settings<P: AsRef<Path>>(mods_folder: P) -> Result<Vec<crate::mod_manager::models::Ue4ssSettingsEntry>, ModError> {
+    let mods_folder = mods_folder.as_ref();
+    let settings_path = get_ue4ss_settings_path(mods_folder)?;
+    let doc = super::ini_parser::IniDocument::from_path(settings_path)?;
+    Ok(doc.get_entries())
+}
+
+pub fn save_ue4ss_settings<P: AsRef<Path>>(
+    mods_folder: P,
+    updates: std::collections::HashMap<String, String>,
+) -> Result<(), ModError> {
+    let mods_folder = mods_folder.as_ref();
+    let settings_path = get_ue4ss_settings_path(mods_folder)?;
+    let doc = super::ini_parser::IniDocument::from_path(settings_path)?;
+    doc.save(&updates)
+}

@@ -807,6 +807,24 @@ body {
   box-shadow: 0 0 10px var(--accent-cyan-glow);
 }
 
+.btn-danger {
+  background: hsla(var(--hue-red), 85%, 55%, 0.08);
+  border: 1px solid hsla(var(--hue-red), 85%, 55%, 0.25);
+  color: var(--accent-red);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.btn-danger:hover {
+  background: var(--accent-red);
+  color: var(--bg-base);
+  box-shadow: 0 0 10px var(--accent-red-glow);
+}
+
 /* Empty List State */
 .list-empty {
   display: flex;

@@ -124,3 +124,21 @@ pub async fn save_app_config(config: AppConfig) -> Result<(), ModError> {
     service::save_app_config(&config)
 }
 
+#[tauri::command]
+pub async fn uninstall_mod(mods_folder: String, mod_name: String) -> Result<(), ModError> {
+    service::uninstall_mod(Path::new(&mods_folder), &mod_name)
+}
+
+#[tauri::command]
+pub async fn load_ue4ss_settings(mods_folder: String) -> Result<Vec<crate::mod_manager::models::Ue4ssSettingsEntry>, ModError> {
+    service::load_ue4ss_settings(Path::new(&mods_folder))
+}
+
+#[tauri::command]
+pub async fn save_ue4ss_settings(
+    mods_folder: String,
+    updates: HashMap<String, String>,
+) -> Result<(), ModError> {
+    service::save_ue4ss_settings(Path::new(&mods_folder), updates)
+}
+
