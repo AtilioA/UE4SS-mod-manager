@@ -287,44 +287,62 @@ pub fn install_mod_folder<P: AsRef<Path>, Q: AsRef<Path>>(
 
 pub fn install_mod_archive<P: AsRef<Path>, Q: AsRef<Path>>(
     mods_folder: P,
-    zip_path: Q,
+    archive_path: Q,
     replace: bool,
 ) -> Result<UE4SSMod, ModError> {
     let mods_folder = mods_folder.as_ref();
-    let zip_path = zip_path.as_ref();
-    let zip_file = fs::File::open(zip_path)?;
-    let mut archive = zip::ZipArchive::new(zip_file)?;
+    let archive_path = archive_path.as_ref();
 
     let temp_dir = tempfile::tempdir()?;
     let temp_path = temp_dir.path();
 
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i)?;
-        let outpath = match file.enclosed_name() {
-            Some(path) => temp_path.join(path),
-            None => continue,
-        };
+    let ext = archive_path.extension().and_then(|e| e.to_str()).map(|s| s.to_lowercase());
+    match ext.as_deref() {
+        Some("zip") => {
+            let zip_file = fs::File::open(archive_path)?;
+            let mut archive = zip::ZipArchive::new(zip_file)?;
 
-        // Safety check to prevent zip slip
-        if !outpath.starts_with(temp_path) {
-            return Err(ModError::InvalidMod("Unsafe zip entry path detected".to_string()));
-        }
+            for i in 0..archive.len() {
+                let mut file = archive.by_index(i)?;
+                let outpath = match file.enclosed_name() {
+                    Some(path) => temp_path.join(path),
+                    None => continue,
+                };
 
-        if file.name().ends_with('/') {
-            fs::create_dir_all(&outpath)?;
-        } else {
-            if let Some(p) = outpath.parent() {
-                let parent_path: &Path = p;
-                if !parent_path.exists() {
-                    fs::create_dir_all(parent_path)?;
+                // Safety check to prevent zip slip
+                if !outpath.starts_with(temp_path) {
+                    return Err(ModError::InvalidMod("Unsafe zip entry path detected".to_string()));
+                }
+
+                if file.name().ends_with('/') {
+                    fs::create_dir_all(&outpath)?;
+                } else {
+                    if let Some(p) = outpath.parent() {
+                        let parent_path: &Path = p;
+                        if !parent_path.exists() {
+                            fs::create_dir_all(parent_path)?;
+                        }
+                    }
+                    let mut outfile = fs::File::create(&outpath)?;
+                    std::io::copy(&mut file, &mut outfile)?;
                 }
             }
-            let mut outfile = fs::File::create(&outpath)?;
-            std::io::copy(&mut file, &mut outfile)?;
         }
+        Some("7z") => {
+            sevenz_rust::decompress_file(archive_path, temp_path)
+                .map_err(|e| ModError::InvalidMod(format!("Failed to extract 7-Zip archive: {}", e)))?;
+        }
+        Some("rar") => {
+            rar::Archive::extract_all(
+                &archive_path.to_string_lossy(),
+                &temp_path.to_string_lossy(),
+                ""
+            ).map_err(|e| ModError::InvalidMod(format!("Failed to extract RAR archive: {:?}", e)))?;
+        }
+        _ => return Err(ModError::InvalidMod("Unsupported archive format.".to_string())),
     }
 
-    let archive_stem = zip_path
+    let archive_stem = archive_path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("archive_mod");

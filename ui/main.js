@@ -755,16 +755,17 @@ async function handleDropPath(path) {
   const lastDotIdx = nameWithExt.lastIndexOf('.');
   if (lastDotIdx !== -1) {
     const ext = nameWithExt.substring(lastDotIdx + 1).toLowerCase();
-    const blockedExtensions = ['txt', 'exe', 'png', 'jpg', 'jpeg', 'pdf', 'mp3', 'mp4', 'rar', '7z', 'tar', 'gz', 'json', 'dll', 'lua'];
+    const blockedExtensions = ['txt', 'exe', 'png', 'jpg', 'jpeg', 'pdf', 'mp3', 'mp4', 'tar', 'gz', 'json', 'dll', 'lua'];
     if (blockedExtensions.includes(ext)) {
-      showToast(`Unsupported file format (.${ext}). Please drag in a ZIP archive or mod folder.`, 'error');
+      showToast(`Unsupported file format (.${ext}). Please drag in a ZIP, 7-Zip, RAR archive or mod folder.`, 'error');
       return;
     }
   }
   
-  const isZip = nameWithExt.toLowerCase().endsWith('.zip');
+  const nameLower = nameWithExt.toLowerCase();
+  const isArchive = nameLower.endsWith('.zip') || nameLower.endsWith('.7z') || nameLower.endsWith('.rar');
   let name = nameWithExt;
-  if (isZip) {
+  if (isArchive) {
     name = name.substring(0, name.lastIndexOf('.'));
   }
   

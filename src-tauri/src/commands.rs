@@ -29,10 +29,14 @@ pub async fn install_mod(
     }
 
     if src_path.is_file() {
-        if src_path.extension().and_then(|e| e.to_str()).map(|s| s.to_lowercase()) == Some("zip".to_string()) {
-            service::install_mod_archive(mods_path, src_path, replace)
-        } else {
-            Err(ModError::InvalidMod("Dropped file is not a ZIP archive. Only ZIP archives (.zip) and mod folders are supported.".to_string()))
+        let ext = src_path.extension().and_then(|e| e.to_str()).map(|s| s.to_lowercase());
+        match ext.as_deref() {
+            Some("zip") | Some("7z") | Some("rar") => {
+                service::install_mod_archive(mods_path, src_path, replace)
+            }
+            _ => {
+                Err(ModError::InvalidMod("Unsupported archive format. Only ZIP (.zip), 7-Zip (.7z), and RAR (.rar) archives or mod folders are supported.".to_string()))
+            }
         }
     } else if src_path.is_dir() {
         service::install_mod_folder(mods_path, src_path, replace)
