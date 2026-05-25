@@ -1,6 +1,6 @@
 # UE4SS Mod Manager
 
-A simple GUI application for managing [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS) mods in Unreal Engine games.
+A GUI application for managing [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS) mods in Unreal Engine games.
 
 ## Features
 
@@ -8,96 +8,162 @@ A simple GUI application for managing [UE4SS](https://github.com/UE4SS-RE/RE-UE4
 - Toggle all mods on/off with one button
 - Drag and drop a mod folder or zip to install and enable it
 - Configurable save options:
-  - Individual enabled.txt files
-  - mods.json for UE4SS
-  - mods.txt for UE4SS
+  - Individual `enabled.txt` files
+  - `mods.json` for UE4SS
+  - `mods.txt` for UE4SS
 - Modern dark mode UI
 - Simple, intuitive interface
 
-## Installation / building
+---
 
-To get started, you only really need to have [UE4SS already installed](https://github.com/UE4SS-RE/RE-UE4SS#basic-installation).
-
-### Requirements
-
-- Windows 10/11
-- UE4SS installed in your game directory
+## Installation
 
 ### Option 1: Pre-built executable
 
 1. Download the latest release from the [Nexus page](https://www.nexusmods.com/subnautica2/mods/34)
 2. Place the executable in your game's `ue4ss/Mods` folder
-3. Run the executable
+3. Run it
 
-### Option 2: Building from source
+### Option 2: Build from source (Tauri)
 
-1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if needed
-2. Install build dependencies:
+This is the recommended build path. The app is built with [Tauri v2](https://tauri.app/) (Rust backend + Vite frontend).
+
+#### Prerequisites
+
+| Tool | Version | Download |
+|------|---------|----------|
+| [Node.js](https://nodejs.org/) | 18 or newer | https://nodejs.org/ |
+| [Rust](https://www.rust-lang.org/tools/install) | stable (latest) | https://rustup.rs/ |
+| [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) | any | Pre-installed on Windows 10/11 |
+
+> **Windows users:** During Rust installation via `rustup`, make sure to also install the **MSVC build tools** (Visual Studio Build Tools with the "Desktop development with C++" workload).
+
+#### Steps
+
+1. **Clone the repository**
 
    ```bash
-   uv sync
+   git clone https://github.com/your-username/UE4SS-mod-manager.git
+   cd UE4SS-mod-manager
    ```
 
-3. Build the Windows executable:
+2. **Install Node dependencies**
 
    ```bash
-   uv run build
+   npm install
    ```
 
-The executable will be created in the `dist/` folder. Move it to your game's `ue4ss/Mods` folder and run it.
+3. **Build the app**
+
+   ```bash
+   npm run tauri build
+   ```
+
+   This will:
+   - Build the Vite frontend (`dist/`)
+   - Compile the Rust backend
+   - Bundle everything into a Windows installer and standalone `.exe`
+
+4. **Find the output**
+
+   The built files are placed in:
+
+   ```
+   src-tauri/target/release/bundle/
+   ├── msi/          ← Windows installer (.msi)
+   ├── nsis/         ← NSIS installer (.exe)
+   └── ue4ss-modmanager.exe   ← standalone executable
+   ```
+
+   Place the `.exe` in your game's `ue4ss/Mods` folder and run it.
+
+#### Development mode (hot reload)
+
+To run the app locally with live reloading:
+
+```bash
+npm run tauri dev
+```
+
+This starts the Vite dev server and opens the Tauri window. Changes to the frontend are reflected instantly.
+
+---
+
+### Option 3: Build from source (Python / legacy)
+
+The original Python/Tkinter version is still available.
+
+#### Prerequisites
+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+#### Steps
+
+```bash
+uv sync
+uv run build
+```
+
+The executable will be created in `dist/`. Move it to your game's `ue4ss/Mods` folder.
+
+---
 
 ## Usage
 
 1. Launch the application
-2. All mods in your UE4SS/Mods folder are automatically detected
+2. All mods in your `UE4SS/Mods` folder are automatically detected
 3. Enable/disable mods by checking/unchecking their boxes
-4. Drag a mod folder onto the window to install and enable it automatically
+4. Drag a mod folder or zip onto the window to install and enable it
 5. Configure save options:
-   - "Save enabled.txt" - Updates individual enabled.txt files in each mod folder
-   - "Save mods.json" - Updates the mods.json file used by UE4SS
-   - "Save mods.txt" - Updates the mods.txt file used by UE4SS
-6. Click "Save Changes" to apply your configuration
-Use "Toggle All" to enable/disable all mods at once
+   - **Save enabled.txt** — updates individual `enabled.txt` files per mod
+   - **Save mods.json** — updates the `mods.json` file used by UE4SS
+   - **Save mods.txt** — updates the `mods.txt` file used by UE4SS
+6. Click **Save Changes** to apply
+7. Use **Toggle All** to enable/disable all mods at once
 
 ## How it works
 
-- The manager looks for mod folders in the UE4SS/Mods directory
-- Each mod must have a scripts folder with at least one main.lua file
-- Folder and zip installs can nested structures when structure is simple enough
-- Enabling a mod creates an enabled.txt file in its folder and adds entries to mods.json and mods.txt
-- Disabling a mod removes these text entries
+- The manager scans the `UE4SS/Mods` directory for mod folders
+- Each mod must have a `scripts/` folder containing at least one `main.lua` file
+- Folder and zip installs handle simple nested structures automatically
+- Enabling a mod creates an `enabled.txt` in its folder and adds entries to `mods.json` / `mods.txt`
+- Disabling a mod removes those entries
+
+---
 
 ## Development
 
-### Setup development environment
+### Setup (Tauri)
 
-1. Clone the repository
-2. Install development dependencies:
+```bash
+npm install
+npm run tauri dev
+```
 
-   ```bash
-   uv sync --dev
-   ```
+### Setup (Python)
 
-3. Install pre-commit hooks:
+```bash
+uv sync --dev
+pre-commit install
+```
 
-   ```bash
-   pre-commit install
-   ```
+---
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome!
 
 1. Fork the project
-2. Create your feature branch: `git create -c feature/amazing-feature`
+2. Create your feature branch: `git checkout -b feature/amazing-feature`
 3. Commit your changes: `git commit -m 'Add some amazing feature'`
 4. Push to the branch: `git push origin feature/amazing-feature`
 5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE) for details.
 
 ## Security
 
-For security issues, please see [SECURITY.md](SECURITY.md).
+See [SECURITY.md](SECURITY.md) for reporting security issues.
