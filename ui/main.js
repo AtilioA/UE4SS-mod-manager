@@ -344,7 +344,7 @@ async function saveConfig() {
     
     for (const entry of state.configEntries) {
       const orig = state.originalConfigEntries.find(o => o.key === entry.key);
-      const inputEl = document.getElementById(`cfg-input-${entry.key}`);
+      const inputEl = document.getElementById(makeDomId('cfg-input', entry.key));
       
       let newValue = entry.value;
       if (entry.value_type === 'boolean') {
@@ -418,7 +418,7 @@ async function saveUe4ssSettings() {
     
     for (const entry of state.ue4ssSettingsEntries) {
       const orig = state.originalUe4ssSettingsEntries.find(o => o.section === entry.section && o.key === entry.key);
-      const inputEl = document.getElementById(`ini-input-${entry.section}-${entry.key}`);
+      const inputEl = document.getElementById(makeDomId('ini-input', entry.section, entry.key));
       
       let newValue = entry.value;
       const isBoolVal = entry.value.toLowerCase() === 'true' || entry.value.toLowerCase() === 'false' || entry.value === '0' || entry.value === '1';
@@ -498,7 +498,8 @@ function renderUe4ssSettingsFields() {
       fieldWrapper.style.marginBottom = '8px';
       
       let inputHtml = '';
-      const descText = entry.comment ? `<p class="field-description">${entry.comment.replace(/\n/g, '<br>')}</p>` : '';
+      const inputId = makeDomId('ini-input', entry.section, entry.key);
+      const descText = entry.comment ? `<p class="field-description">${escapeHtml(entry.comment).replace(/\n/g, '<br>')}</p>` : '';
       
       // Determine field type
       const valLower = entry.value.toLowerCase();
@@ -509,7 +510,7 @@ function renderUe4ssSettingsFields() {
         inputHtml = `
           <div class="field-input-wrapper">
             <label class="switch-container">
-              <input type="checkbox" id="ini-input-${entry.section}-${entry.key}" ${isChecked ? 'checked' : ''}>
+              <input type="checkbox" id="${inputId}" ${isChecked ? 'checked' : ''}>
               <span class="switch-slider"></span>
             </label>
           </div>
@@ -518,14 +519,14 @@ function renderUe4ssSettingsFields() {
         // Fallback text input
         inputHtml = `
           <div class="field-input-wrapper">
-            <input type="text" class="input-text" id="ini-input-${entry.section}-${entry.key}" value="${escapeHtml(entry.value)}">
+            <input type="text" class="input-text" id="${inputId}" value="${escapeHtml(entry.value)}">
           </div>
         `;
       }
       
       fieldWrapper.innerHTML = `
         <div class="field-info">
-          <label class="field-label" for="ini-input-${entry.section}-${entry.key}">${entry.key}</label>
+          <label class="field-label" for="${inputId}">${escapeHtml(entry.key)}</label>
           ${descText}
         </div>
         ${inputHtml}
@@ -588,28 +589,28 @@ function renderMods() {
     if (mod.scripts && mod.scripts.length > 0) {
       scriptsInfo = `
         <div class="mod-scripts">
-          <strong>Files:</strong> ${mod.scripts.join(', ')}
+          <strong>Files:</strong> ${mod.scripts.map(escapeHtml).join(', ')}
         </div>
       `;
     }
     
     // Config trigger button
     const configBtn = mod.config_path
-      ? `<button class="btn btn-secondary btn-small btn-config" data-name="${mod.name}">⚙️ Configure</button>`
+      ? `<button class="btn btn-secondary btn-small btn-config" data-name="${escapeHtml(mod.name)}">⚙️ Configure</button>`
       : '';
       
     // Uninstall/Delete Button
-    const deleteBtn = `<button class="btn btn-danger btn-small btn-delete" data-name="${mod.name}">🗑️ Delete</button>`;
+    const deleteBtn = `<button class="btn btn-danger btn-small btn-delete" data-name="${escapeHtml(mod.name)}">🗑️ Delete</button>`;
       
     card.innerHTML = `
       <div class="card-left">
         <label class="checkbox-container">
-          <input type="checkbox" class="mod-toggle" data-name="${mod.name}" ${mod.enabled ? 'checked' : ''}>
+          <input type="checkbox" class="mod-toggle" data-name="${escapeHtml(mod.name)}" ${mod.enabled ? 'checked' : ''}>
           <span class="checkbox-checkmark"></span>
         </label>
         <div class="mod-details">
           <div class="mod-header-row">
-            <span class="mod-name">${mod.name}</span>
+            <span class="mod-name">${escapeHtml(mod.name)}</span>
             ${langBadge}
           </div>
           ${scriptsInfo}
@@ -669,13 +670,14 @@ function renderConfigFields() {
     fieldWrapper.className = 'config-field-row';
     
     let inputHtml = '';
-    const descText = entry.comment ? `<p class="field-description">${entry.comment}</p>` : '';
+    const inputId = makeDomId('cfg-input', entry.key);
+    const descText = entry.comment ? `<p class="field-description">${escapeHtml(entry.comment)}</p>` : '';
     
     if (entry.value_type === 'boolean') {
       inputHtml = `
         <div class="field-input-wrapper">
           <label class="switch-container">
-            <input type="checkbox" id="cfg-input-${entry.key}" ${entry.value ? 'checked' : ''}>
+            <input type="checkbox" id="${inputId}" ${entry.value ? 'checked' : ''}>
             <span class="switch-slider"></span>
           </label>
         </div>
@@ -683,27 +685,27 @@ function renderConfigFields() {
     } else if (entry.value_type === 'number') {
       inputHtml = `
         <div class="field-input-wrapper">
-          <input type="number" step="any" class="input-text" id="cfg-input-${entry.key}" value="${entry.value}">
+          <input type="number" step="any" class="input-text" id="${inputId}" value="${escapeHtml(String(entry.value))}">
         </div>
       `;
     } else if (entry.value_type === 'string') {
       inputHtml = `
         <div class="field-input-wrapper">
-          <input type="text" class="input-text" id="cfg-input-${entry.key}" value="${escapeHtml(entry.value)}">
+          <input type="text" class="input-text" id="${inputId}" value="${escapeHtml(entry.value)}">
         </div>
       `;
     } else {
       // Fallback
       inputHtml = `
         <div class="field-input-wrapper">
-          <input type="text" class="input-text" id="cfg-input-${entry.key}" value="${escapeHtml(String(entry.value))}">
+          <input type="text" class="input-text" id="${inputId}" value="${escapeHtml(String(entry.value))}">
         </div>
       `;
     }
     
     fieldWrapper.innerHTML = `
       <div class="field-info">
-        <label class="field-label" for="cfg-input-${entry.key}">${entry.key}</label>
+        <label class="field-label" for="${inputId}">${escapeHtml(entry.key)}</label>
         ${descText}
       </div>
       ${inputHtml}
@@ -714,13 +716,17 @@ function renderConfigFields() {
 }
 
 function escapeHtml(str) {
-  if (!str) return '';
-  return str
+  if (str === null || str === undefined) return '';
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function makeDomId(prefix, ...parts) {
+  return [prefix, ...parts.map(part => encodeURIComponent(String(part)))].join('-');
 }
 
 // --- DRAG AND DROP HANDLERS ---

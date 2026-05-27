@@ -1,8 +1,8 @@
+use crate::error::ModError;
+use crate::mod_manager::models::UE4SSMod;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use crate::error::ModError;
-use crate::mod_manager::models::UE4SSMod;
 
 pub const NATIVE_MODS: &[&str] = &[
     "BPML_GenericFunctions",
@@ -27,7 +27,10 @@ pub fn detect_mods_folder() -> Option<PathBuf> {
 
     // Check 2: We are in UE4SS, which contains Mods/
     let mods_in_current = current.join("Mods");
-    if mods_in_current.is_dir() && current.file_name().map(|n| n.to_ascii_uppercase()) == Some(std::ffi::OsString::from("UE4SS")) {
+    if mods_in_current.is_dir()
+        && current.file_name().map(|n| n.to_ascii_uppercase())
+            == Some(std::ffi::OsString::from("UE4SS"))
+    {
         return Some(mods_in_current);
     }
 
@@ -38,7 +41,13 @@ pub fn detect_mods_folder() -> Option<PathBuf> {
         }
 
         let mods_path = current.join("Mods");
-        if mods_path.is_dir() && mods_path.parent().and_then(|p| p.file_name()).map(|n| n.to_ascii_uppercase()) == Some(std::ffi::OsString::from("UE4SS")) {
+        if mods_path.is_dir()
+            && mods_path
+                .parent()
+                .and_then(|p| p.file_name())
+                .map(|n| n.to_ascii_uppercase())
+                == Some(std::ffi::OsString::from("UE4SS"))
+        {
             return Some(mods_path);
         }
 
@@ -58,8 +67,13 @@ pub fn detect_mods_folder() -> Option<PathBuf> {
 }
 
 fn is_mods_folder(path: &Path) -> bool {
-    let is_mods = path.file_name().map(|n| n.to_ascii_uppercase()) == Some(std::ffi::OsString::from("MODS"));
-    let is_parent_ue4ss = path.parent().and_then(|p| p.file_name()).map(|n| n.to_ascii_uppercase()) == Some(std::ffi::OsString::from("UE4SS"));
+    let is_mods =
+        path.file_name().map(|n| n.to_ascii_uppercase()) == Some(std::ffi::OsString::from("MODS"));
+    let is_parent_ue4ss = path
+        .parent()
+        .and_then(|p| p.file_name())
+        .map(|n| n.to_ascii_uppercase())
+        == Some(std::ffi::OsString::from("UE4SS"));
     is_mods && is_parent_ue4ss
 }
 
@@ -88,7 +102,9 @@ pub fn load_mods<P: AsRef<Path>>(mods_folder: P) -> Result<Vec<UE4SSMod>, ModErr
 
             match load_single_mod(&path) {
                 Ok(mut m) => {
-                    m.is_native = NATIVE_MODS.iter().any(|&n| n.to_uppercase() == name.to_uppercase());
+                    m.is_native = NATIVE_MODS
+                        .iter()
+                        .any(|&n| n.to_uppercase() == name.to_uppercase());
                     mods.push(m);
                 }
                 Err(e) => {
@@ -104,7 +120,8 @@ pub fn load_mods<P: AsRef<Path>>(mods_folder: P) -> Result<Vec<UE4SSMod>, ModErr
 }
 
 fn load_single_mod(path: &Path) -> Result<UE4SSMod, ModError> {
-    let name = path.file_name()
+    let name = path
+        .file_name()
         .and_then(|n| n.to_str())
         .ok_or_else(|| ModError::InvalidMod("Invalid mod folder name".to_string()))?
         .to_string();
@@ -251,7 +268,11 @@ pub fn install_mod_folder<P: AsRef<Path>, Q: AsRef<Path>>(
 
     let target_path = mods_folder.join(mod_name);
 
-    if resolved_src == target_path.canonicalize().unwrap_or_else(|_| target_path.clone()) {
+    if resolved_src
+        == target_path
+            .canonicalize()
+            .unwrap_or_else(|_| target_path.clone())
+    {
         // Already in the correct destination, enable it
         let mut m = load_single_mod(&target_path)?;
         m.enabled = true;
@@ -280,7 +301,9 @@ pub fn install_mod_folder<P: AsRef<Path>, Q: AsRef<Path>>(
 
     let mut installed_mod = load_single_mod(&target_path)?;
     installed_mod.enabled = true;
-    installed_mod.is_native = NATIVE_MODS.iter().any(|&n| n.to_uppercase() == installed_mod.name.to_uppercase());
+    installed_mod.is_native = NATIVE_MODS
+        .iter()
+        .any(|&n| n.to_uppercase() == installed_mod.name.to_uppercase());
 
     Ok(installed_mod)
 }
@@ -296,7 +319,10 @@ pub fn install_mod_archive<P: AsRef<Path>, Q: AsRef<Path>>(
     let temp_dir = tempfile::tempdir()?;
     let temp_path = temp_dir.path();
 
-    let ext = archive_path.extension().and_then(|e| e.to_str()).map(|s| s.to_lowercase());
+    let ext = archive_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_lowercase());
     match ext.as_deref() {
         Some("zip") => {
             let zip_file = fs::File::open(archive_path)?;
@@ -311,7 +337,9 @@ pub fn install_mod_archive<P: AsRef<Path>, Q: AsRef<Path>>(
 
                 // Safety check to prevent zip slip
                 if !outpath.starts_with(temp_path) {
-                    return Err(ModError::InvalidMod("Unsafe zip entry path detected".to_string()));
+                    return Err(ModError::InvalidMod(
+                        "Unsafe zip entry path detected".to_string(),
+                    ));
                 }
 
                 if file.name().ends_with('/') {
@@ -329,17 +357,23 @@ pub fn install_mod_archive<P: AsRef<Path>, Q: AsRef<Path>>(
             }
         }
         Some("7z") => {
-            sevenz_rust::decompress_file(archive_path, temp_path)
-                .map_err(|e| ModError::InvalidMod(format!("Failed to extract 7-Zip archive: {}", e)))?;
+            sevenz_rust::decompress_file(archive_path, temp_path).map_err(|e| {
+                ModError::InvalidMod(format!("Failed to extract 7-Zip archive: {}", e))
+            })?;
         }
         Some("rar") => {
             rar::Archive::extract_all(
                 &archive_path.to_string_lossy(),
                 &temp_path.to_string_lossy(),
-                ""
-            ).map_err(|e| ModError::InvalidMod(format!("Failed to extract RAR archive: {:?}", e)))?;
+                "",
+            )
+            .map_err(|e| ModError::InvalidMod(format!("Failed to extract RAR archive: {:?}", e)))?;
         }
-        _ => return Err(ModError::InvalidMod("Unsupported archive format.".to_string())),
+        _ => {
+            return Err(ModError::InvalidMod(
+                "Unsupported archive format.".to_string(),
+            ))
+        }
     }
 
     let archive_stem = archive_path
@@ -355,7 +389,11 @@ fn archive_mod_path(extract_path: &Path, archive_name: &str) -> Result<PathBuf, 
     let has_scripts = fs::read_dir(extract_path)?.any(|entry| {
         if let Ok(e) = entry {
             let p = e.path();
-            p.is_dir() && p.file_name().and_then(|n| n.to_str()).map(|s| s.to_lowercase()) == Some("scripts".to_string())
+            p.is_dir()
+                && p.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|s| s.to_lowercase())
+                    == Some("scripts".to_string())
         } else {
             false
         }
@@ -449,32 +487,20 @@ pub fn save_changes<P: AsRef<Path>>(
 pub fn launch_game<P: AsRef<Path>>(mods_folder: P) -> Result<String, ModError> {
     let start_dir = mods_folder.as_ref();
 
-    for search_dir in &[start_dir.parent(), start_dir.parent().and_then(|p| p.parent())] {
+    for search_dir in candidate_game_search_dirs(start_dir) {
         if let Some(dir) = search_dir {
-            let mut matches = Vec::new();
-            if let Ok(entries) = fs::read_dir(dir) {
-                for entry in entries {
-                    if let Ok(entry) = entry {
-                        let path = entry.path();
-                        if path.is_file() {
-                            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                                if name.ends_with("Win64-Shipping.exe") || name.ends_with("WinGDK-Shipping.exe") {
-                                    matches.push(path);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            let mut matches = find_game_launch_candidates(dir);
 
             if !matches.is_empty() {
-                matches.sort_by(|a, b| a.file_name().unwrap().to_ascii_lowercase().cmp(&b.file_name().unwrap().to_ascii_lowercase()));
+                matches.sort_by(|a, b| {
+                    a.file_name()
+                        .unwrap()
+                        .to_ascii_lowercase()
+                        .cmp(&b.file_name().unwrap().to_ascii_lowercase())
+                });
                 let game_exe = &matches[0];
 
-                Command::new(game_exe)
-                    .current_dir(game_exe.parent().unwrap())
-                    .spawn()
-                    .map_err(|e| ModError::GameLaunchFailed(e.to_string()))?;
+                launch_game_path(game_exe)?;
 
                 return Ok(game_exe.file_name().unwrap().to_string_lossy().to_string());
             }
@@ -482,6 +508,86 @@ pub fn launch_game<P: AsRef<Path>>(mods_folder: P) -> Result<String, ModError> {
     }
 
     Err(ModError::GameExecutableNotFound)
+}
+
+fn candidate_game_search_dirs(start_dir: &Path) -> Vec<Option<&Path>> {
+    vec![
+        start_dir.parent(),
+        start_dir.parent().and_then(|p| p.parent()),
+        start_dir
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent()),
+    ]
+}
+
+fn find_game_launch_candidates(search_dir: &Path) -> Vec<PathBuf> {
+    let mut matches = Vec::new();
+
+    for entry in walkdir::WalkDir::new(search_dir)
+        .max_depth(4)
+        .into_iter()
+        .filter_map(Result::ok)
+    {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+
+        if is_game_launch_candidate(path, name) {
+            matches.push(path.to_path_buf());
+        }
+    }
+
+    matches
+}
+
+fn is_game_launch_candidate(path: &Path, name: &str) -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        path.is_file()
+            && (name.ends_with("Win64-Shipping.exe") || name.ends_with("WinGDK-Shipping.exe"))
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        path.is_file()
+            && (name.ends_with("Linux-Shipping")
+                || name.ends_with("Linux-Shipping.exe")
+                || name.ends_with("Win64-Shipping.exe")
+                || name.ends_with("WinGDK-Shipping.exe"))
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        (path.is_dir() && name.ends_with(".app"))
+            || (path.is_file() && name.ends_with("Mac-Shipping"))
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    {
+        path.is_file() && name.contains("Shipping")
+    }
+}
+
+fn launch_game_path(game_path: &Path) -> Result<(), ModError> {
+    #[cfg(target_os = "macos")]
+    {
+        if game_path.extension().and_then(|e| e.to_str()) == Some("app") {
+            Command::new("open")
+                .arg(game_path)
+                .spawn()
+                .map_err(|e| ModError::GameLaunchFailed(e.to_string()))?;
+            return Ok(());
+        }
+    }
+
+    Command::new(game_path)
+        .current_dir(game_path.parent().unwrap_or_else(|| Path::new(".")))
+        .spawn()
+        .map_err(|e| ModError::GameLaunchFailed(e.to_string()))?;
+
+    Ok(())
 }
 
 fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
@@ -499,14 +605,41 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result
 }
 
 fn get_config_path() -> Option<PathBuf> {
-    let current_exe = std::env::current_exe().ok()?;
-    let exe_dir = current_exe.parent()?;
-    Some(exe_dir.join("manager_config.json"))
+    let mut config_dir = platform_config_dir()?;
+    config_dir.push("UE4SS Mod Manager");
+    if fs::create_dir_all(&config_dir).is_err() {
+        return None;
+    }
+    Some(config_dir.join("manager_config.json"))
+}
+
+#[cfg(target_os = "windows")]
+fn platform_config_dir() -> Option<PathBuf> {
+    std::env::var_os("APPDATA").map(PathBuf::from)
+}
+
+#[cfg(target_os = "macos")]
+fn platform_config_dir() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .map(|home| home.join("Library").join("Application Support"))
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn platform_config_dir() -> Option<PathBuf> {
+    std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
+}
+
+#[cfg(not(any(windows, unix)))]
+fn platform_config_dir() -> Option<PathBuf> {
+    std::env::current_dir().ok()
 }
 
 pub fn load_app_config() -> crate::mod_manager::models::AppConfig {
     use crate::mod_manager::models::AppConfig;
-    
+
     let path = match get_config_path() {
         Some(p) => p,
         None => return AppConfig::default(),
@@ -581,18 +714,20 @@ fn get_ue4ss_settings_path(mods_folder: &Path) -> Result<PathBuf, ModError> {
             return Ok(path);
         }
     }
-    
+
     // 2. Check if it's directly inside mods_folder (sometimes people put it there, though rare)
     let path = mods_folder.join("UE4SS-settings.ini");
     if path.is_file() {
         return Ok(path);
     }
-    
+
     // 3. Fallback: return not found error
     Err(ModError::InvalidMod("UE4SS-settings.ini not found in parent directory of Mods. Please ensure UE4SS is installed correctly.".to_string()))
 }
 
-pub fn load_ue4ss_settings<P: AsRef<Path>>(mods_folder: P) -> Result<Vec<crate::mod_manager::models::Ue4ssSettingsEntry>, ModError> {
+pub fn load_ue4ss_settings<P: AsRef<Path>>(
+    mods_folder: P,
+) -> Result<Vec<crate::mod_manager::models::Ue4ssSettingsEntry>, ModError> {
     let mods_folder = mods_folder.as_ref();
     let settings_path = get_ue4ss_settings_path(mods_folder)?;
     let doc = super::ini_parser::IniDocument::from_path(settings_path)?;

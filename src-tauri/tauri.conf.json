@@ -1,9 +1,12 @@
 {
   "productName": "UE4SS Mod Manager",
   "version": "1.2.0",
-  "identifier": "com.ue4ss-modmanager.app",
+  "identifier": "com.ue4ss.modmanager",
   "bundle": {
     "active": true,
+    "category": "Utility",
+    "shortDescription": "Cross-platform UE4SS mod manager",
+    "longDescription": "A desktop app for managing UE4SS mods in Unreal Engine games on Windows, Linux, and macOS.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -11,7 +14,15 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "targets": "all"
+    "targets": "all",
+    "macOS": {
+      "minimumSystemVersion": "10.13"
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    }
   },
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -23,7 +34,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Subnautica 2 UE4SS Mod Manager",
+        "title": "UE4SS Mod Manager",
         "width": 950,
         "height": 720,
         "resizable": true,

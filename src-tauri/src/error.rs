@@ -23,7 +23,7 @@ pub enum ModError {
     #[error("Config Validation Error: {0}")]
     ConfigValidation(String),
 
-    #[error("Game executable not found ending with 'Win64-Shipping.exe' or 'WinGDK-Shipping.exe' in parent folders.")]
+    #[error("Game executable not found. Searched nearby folders for platform launch targets such as Win64-Shipping.exe, WinGDK-Shipping.exe, Linux-Shipping, Mac-Shipping, or a macOS .app bundle.")]
     GameExecutableNotFound,
 
     #[error("Failed to launch game: {0}")]
