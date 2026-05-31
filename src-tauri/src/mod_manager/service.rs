@@ -493,10 +493,11 @@ pub fn launch_game<P: AsRef<Path>>(mods_folder: P) -> Result<String, ModError> {
 
             if !matches.is_empty() {
                 matches.sort_by(|a, b| {
-                    a.file_name()
-                        .unwrap()
-                        .to_ascii_lowercase()
-                        .cmp(&b.file_name().unwrap().to_ascii_lowercase())
+                    let a_name = a.file_name().unwrap().to_ascii_lowercase();
+                    let b_name = b.file_name().unwrap().to_ascii_lowercase();
+                    launch_candidate_priority(a)
+                        .cmp(&launch_candidate_priority(b))
+                        .then_with(|| a_name.cmp(&b_name))
                 });
                 let game_exe = &matches[0];
 
@@ -540,6 +541,41 @@ fn find_game_launch_candidates(search_dir: &Path) -> Vec<PathBuf> {
     }
 
     matches
+}
+
+fn launch_candidate_priority(_path: &Path) -> u8 {
+    #[cfg(target_os = "linux")]
+    {
+        let Some(name) = _path.file_name().and_then(|n| n.to_str()) else {
+            return u8::MAX;
+        };
+
+        if name.ends_with("Linux-Shipping") {
+            return 0;
+        }
+        if name.ends_with("Linux-Shipping.exe") {
+            return 1;
+        }
+        if name.ends_with("Win64-Shipping.exe") || name.ends_with("WinGDK-Shipping.exe") {
+            return 10;
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let Some(name) = _path.file_name().and_then(|n| n.to_str()) else {
+            return u8::MAX;
+        };
+
+        if _path.is_dir() && name.ends_with(".app") {
+            return 0;
+        }
+        if name.ends_with("Mac-Shipping") {
+            return 1;
+        }
+    }
+
+    0
 }
 
 fn is_game_launch_candidate(path: &Path, name: &str) -> bool {

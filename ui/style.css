@@ -871,7 +871,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.2s var(--transition-normal);
 }
 
 /* Mod config modal card */
@@ -885,7 +884,6 @@ body {
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  animation: modalSlideUp 0.3s var(--transition-spring);
 }
 
 @keyframes modalSlideUp {
@@ -894,12 +892,12 @@ body {
 }
 
 .modal-header {
+  position: relative;
   padding: 20px 24px;
+  padding-right: 76px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
 }
 
 .modal-header > div {
@@ -921,25 +919,69 @@ body {
 }
 
 .modal-close-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 24px;
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.72);
+  font-family: var(--font-body);
+  font-size: 0;
+  line-height: 0;
   cursor: pointer;
-  line-height: 1;
-  width: 32px;
-  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  margin-top: -4px;
-  margin-right: -8px;
-  transition: color var(--transition-fast), background-color var(--transition-fast);
+  appearance: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
 }
+
+.modal-close-btn::before,
+.modal-close-btn::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 999px;
+}
+
+.modal-close-btn::before {
+  transform: rotate(45deg);
+}
+
+.modal-close-btn::after {
+  transform: rotate(-45deg);
+}
+
 .modal-close-btn:hover {
   color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 14px rgba(20, 226, 241, 0.12);
+}
+
+.modal-close-btn:active {
+  transform: scale(0.96);
   background-color: rgba(255, 255, 255, 0.08);
+}
+
+.modal-close-btn:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
 }
 
 .modal-body {
@@ -1078,20 +1120,24 @@ body {
   align-items: center;
   gap: 12px;
   pointer-events: auto;
-  animation: toastSlideIn 0.3s var(--transition-spring) forwards;
+  transform-origin: bottom right;
+  will-change: opacity, transform;
+  animation: toastSlideIn 0.22s var(--transition-normal) both;
 }
 
 @keyframes toastSlideIn {
-  from { opacity: 0; transform: translateX(50px) scale(0.9); }
+  from { opacity: 0; transform: translateX(18px) translateY(6px) scale(0.98); }
   to { opacity: 1; transform: translateX(0) scale(1); }
 }
 
-.toast.removing {
-  animation: toastFadeOut 0.25s var(--transition-normal) forwards;
+.toast-fadeout {
+  pointer-events: none;
+  animation: toastFadeOut 0.22s var(--transition-normal) both;
 }
 
 @keyframes toastFadeOut {
-  to { opacity: 0; transform: translateY(-20px) scale(0.9); }
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to { opacity: 0; transform: translateX(16px) translateY(4px) scale(0.98); }
 }
 
 .toast-icon {

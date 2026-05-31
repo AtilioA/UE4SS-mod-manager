@@ -16,6 +16,13 @@ let state = {
   originalUe4ssSettingsEntries: [], // Deep copy to check for settings modifications
 };
 
+const actionLocks = {
+  pickingFolder: false,
+  openingFolder: false,
+  openingConfig: false,
+  openingUe4ssSettings: false,
+};
+
 // DOM ELEMENT REFERENCES
 const el = {
   welcomeScreen: document.getElementById('welcome-screen'),
@@ -92,19 +99,16 @@ function showToast(message, type = 'success', duration = 4000) {
   
   el.toastContainer.appendChild(toast);
   
-  // Animate progress bar (simulated via CSS transition or just timeout)
-  const closeBtn = toast.querySelector('.toast-close');
-  closeBtn.addEventListener('click', () => {
+  const dismissToast = () => {
+    if (!toast.parentNode || toast.classList.contains('toast-fadeout')) return;
     toast.classList.add('toast-fadeout');
-    setTimeout(() => toast.remove(), 300);
-  });
+    setTimeout(() => toast.remove(), 240);
+  };
+
+  const closeBtn = toast.querySelector('.toast-close');
+  closeBtn.addEventListener('click', dismissToast);
   
-  setTimeout(() => {
-    if (toast.parentNode) {
-      toast.classList.add('toast-fadeout');
-      setTimeout(() => toast.remove(), 300);
-    }
-  }, duration);
+  setTimeout(dismissToast, duration);
 }
 
 // --- CONFIRMATION DIALOG ---
@@ -119,21 +123,21 @@ function showConfirm(title, description) {
   });
 }
 
-el.btnConfirmOk.addEventListener('click', () => {
+el.btnConfirmOk.onclick = () => {
   el.modalConfirm.classList.add('hidden');
   if (confirmResolver) {
     confirmResolver(true);
     confirmResolver = null;
   }
-});
+};
 
-el.btnConfirmCancel.addEventListener('click', () => {
+el.btnConfirmCancel.onclick = () => {
   el.modalConfirm.classList.add('hidden');
   if (confirmResolver) {
     confirmResolver(false);
     confirmResolver = null;
   }
-});
+};
 
 // --- STATE HELPERS ---
 function hasChanges() {
@@ -208,6 +212,9 @@ function showManagerScreen() {
 }
 
 async function pickFolder() {
+  if (actionLocks.pickingFolder) return;
+  actionLocks.pickingFolder = true;
+
   try {
     const selected = await invoke('pick_mods_folder');
     if (selected) {
@@ -218,6 +225,8 @@ async function pickFolder() {
     }
   } catch (err) {
     showToast(`Failed to select directory: ${err}`, 'error');
+  } finally {
+    actionLocks.pickingFolder = false;
   }
 }
 
@@ -308,8 +317,13 @@ async function deleteMod(mod) {
 }
 
 // --- LUA CONFIG ACTIONS ---
-async function openConfigModal(mod) {
+async function openConfigModal(mod, triggerButton = null) {
   if (!mod.config_path) return;
+  if (actionLocks.openingConfig || !el.modalConfig.classList.contains('hidden')) return;
+  actionLocks.openingConfig = true;
+  if (triggerButton) {
+    triggerButton.disabled = true;
+  }
   
   try {
     state.activeConfigPath = mod.config_path;
@@ -324,6 +338,11 @@ async function openConfigModal(mod) {
     el.modalConfig.classList.remove('hidden');
   } catch (err) {
     showToast(`Failed to parse configuration: ${err}`, 'error');
+  } finally {
+    if (triggerButton) {
+      triggerButton.disabled = false;
+    }
+    actionLocks.openingConfig = false;
   }
 }
 
@@ -384,6 +403,8 @@ async function saveConfig() {
 // --- UE4SS SETTINGS INI ACTIONS ---
 async function openUe4ssSettingsModal() {
   if (!state.modsFolder) return;
+  if (actionLocks.openingUe4ssSettings || !el.modalUe4ssSettings.classList.contains('hidden')) return;
+  actionLocks.openingUe4ssSettings = true;
   
   try {
     showToast('Loading UE4SS configuration...', 'info', 1000);
@@ -400,6 +421,8 @@ async function openUe4ssSettingsModal() {
     el.modalUe4ssSettings.classList.remove('hidden');
   } catch (err) {
     showToast(`Failed to parse settings: ${err}`, 'error');
+  } finally {
+    actionLocks.openingUe4ssSettings = false;
   }
 }
 
@@ -644,12 +667,20 @@ function renderMods() {
     // Bind config button
     if (mod.config_path) {
       const btn = card.querySelector('.btn-config');
-      btn.addEventListener('click', () => openConfigModal(mod));
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openConfigModal(mod, btn);
+      });
     }
     
     // Bind delete button
     const deleteBtnEl = card.querySelector('.btn-delete');
-    deleteBtnEl.addEventListener('click', () => deleteMod(mod));
+    deleteBtnEl.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteMod(mod);
+    });
     
     el.listContainer.appendChild(card);
   });
@@ -735,6 +766,10 @@ window.addEventListener('dragover', (e) => {
 });
 
 window.addEventListener('drop', (e) => {
+  e.preventDefault();
+});
+
+window.addEventListener('contextmenu', (e) => {
   e.preventDefault();
 });
 
@@ -834,10 +869,15 @@ if (!window.__initialized) {
   
   const handleOpenFolder = async () => {
     if (!state.modsFolder) return;
+    if (actionLocks.openingFolder) return;
+    actionLocks.openingFolder = true;
+
     try {
       await invoke('open_mods_folder', { modsFolder: state.modsFolder });
     } catch (err) {
       showToast(`Failed to open mods directory: ${err}`, 'error');
+    } finally {
+      actionLocks.openingFolder = false;
     }
   };
 
@@ -930,7 +970,6 @@ if (!window.__initialized) {
       }
     }
   });
-}
 
-// INITIALIZE APP
-init();
+  init();
+}
