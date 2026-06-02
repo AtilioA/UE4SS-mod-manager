@@ -1,20 +1,22 @@
 [package]
 name = "ue4ss-modmanager"
-version = "1.2.0"
+version = "2.0.0"
 description = "A modern high-performance UE4SS Mod Manager written in Rust + Tauri"
 authors = ["Malionaro"]
 edition = "2021"
 
 [build-dependencies]
+indexmap = { version = "1.9.3", features = ["std"] }
 tauri-build = { version = "2.0.3", features = [] }
 
 [dependencies]
+indexmap = { version = "1.9.3", features = ["std"] }
 tauri = { version = "2.1.1", features = [] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
 tokio = { version = "1", features = ["rt-multi-thread", "fs", "process", "io-util"] }
-zip = "2.2"
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
 regex = "1.10"
 walkdir = "2.5"
 rfd = "0.14"
@@ -25,4 +27,3 @@ sevenz-rust = "0.6"
 rar = "0.4.0"
 
 [dev-dependencies]
-

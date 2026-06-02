@@ -304,15 +304,19 @@ Then build:
 git clone https://github.com/your-username/UE4SS-mod-manager.git
 cd UE4SS-mod-manager
 npm install
-npm run tauri build
+npm run tauri:linux:build
 ```
+
+The npm Tauri wrapper sets `CARGO_TARGET_DIR` to `~/.cache/ue4ss-mod-manager/target` by default when it detects WSL building from a Windows-mounted path such as `/mnt/c/...` or `/mnt/e/...`. This avoids `Operation not permitted` errors from Cargo build scripts writing generated files under `src-tauri/target`.
 
 Linux output is created under:
 
 ```text
-src-tauri/target/release/
-src-tauri/target/release/bundle/
+~/.cache/ue4ss-mod-manager/target/release/
+~/.cache/ue4ss-mod-manager/target/release/bundle/
 ```
+
+To use a different Linux build output directory, set `CARGO_TARGET_DIR` before running the script.
 
 Depending on your distribution and installed bundling tools, Tauri may create AppImage, deb, rpm, or raw binary outputs.
 
