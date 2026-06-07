@@ -1,0 +1,22 @@
+{
+  "name": "ue4ss-mod-manager",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "node scripts/tauri-run.mjs",
+    "tauri:linux": "CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$HOME/.cache/ue4ss-mod-manager/target} node scripts/tauri-run.mjs",
+    "tauri:linux:build": "CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$HOME/.cache/ue4ss-mod-manager/target} node scripts/tauri-run.mjs build",
+    "tauri:linux:dev": "CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$HOME/.cache/ue4ss-mod-manager/target} node scripts/tauri-run.mjs dev"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "vite": "^5.2.0"
+  }
+}
