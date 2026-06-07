@@ -9,13 +9,14 @@ pub struct UE4SSMod {
     pub is_native: bool,
     pub lang: String, // "lua" | "cpp"
     pub config_path: Option<String>,
+    pub conflicts: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct LuaConfigEntry {
     pub key: String,
     pub value: serde_json::Value, // Can be Bool, String, Number, or Null
-    pub value_type: String,      // "boolean" | "number" | "string" | "nil"
+    pub value_type: String,       // "boolean" | "number" | "string" | "nil"
     pub comment: String,
 }
 

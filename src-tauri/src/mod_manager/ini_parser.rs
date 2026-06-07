@@ -1,9 +1,9 @@
+use crate::error::ModError;
+use crate::mod_manager::models::Ue4ssSettingsEntry;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
-use crate::error::ModError;
-use crate::mod_manager::models::Ue4ssSettingsEntry;
 
 pub struct IniDocument {
     pub filepath: PathBuf,
@@ -123,12 +123,14 @@ impl IniDocument {
 
                 // Build unique section keys or pure key check
                 let section_key = format!("{}/{}", current_section, key_trimmed);
-                let update_val = updates.get(&section_key).or_else(|| updates.get(key_trimmed));
+                let update_val = updates
+                    .get(&section_key)
+                    .or_else(|| updates.get(key_trimmed));
 
                 if let Some(new_value) = update_val {
                     // Extract trailing inline comment and value before it
                     let value_part = &line[equals_idx + 1..];
-                    
+
                     let mut comment_idx = value_part.len();
                     let mut inline_comment = "";
                     if let Some(idx) = value_part.find(';') {
@@ -138,20 +140,28 @@ impl IniDocument {
                         comment_idx = idx;
                         inline_comment = &value_part[idx..];
                     }
-                    
+
                     let val_before_comment = &value_part[..comment_idx];
                     let val_trimmed = val_before_comment.trim();
-                    
+
                     let (start_spaces, end_spaces) = if val_trimmed.is_empty() {
                         (" ", "")
                     } else {
-                        let start_space_len = val_before_comment.len() - val_before_comment.trim_start().len();
-                        let end_space_len = val_before_comment.len() - val_before_comment.trim_end().len();
-                        (&val_before_comment[..start_space_len], &val_before_comment[val_before_comment.len() - end_space_len..])
+                        let start_space_len =
+                            val_before_comment.len() - val_before_comment.trim_start().len();
+                        let end_space_len =
+                            val_before_comment.len() - val_before_comment.trim_end().len();
+                        (
+                            &val_before_comment[..start_space_len],
+                            &val_before_comment[val_before_comment.len() - end_space_len..],
+                        )
                     };
 
                     // Rebuild keeping original key-part spacing & trailing comments
-                    let rebuilt_line = format!("{}={}{}{}{}", key_part, start_spaces, new_value, end_spaces, inline_comment);
+                    let rebuilt_line = format!(
+                        "{}={}{}{}{}",
+                        key_part, start_spaces, new_value, end_spaces, inline_comment
+                    );
                     new_lines.push(rebuilt_line);
                 } else {
                     new_lines.push(line.clone());
@@ -202,7 +212,10 @@ EnableOverlay = 0 ; inline comment here
         assert_eq!(entries[2].section, "Debug");
         assert_eq!(entries[2].key, "EnableOverlay");
         assert_eq!(entries[2].value, "0");
-        assert_eq!(entries[2].comment, "Enable debug overlays\nAnother line of comment");
+        assert_eq!(
+            entries[2].comment,
+            "Enable debug overlays\nAnother line of comment"
+        );
 
         // Save updates
         let mut updates = HashMap::new();

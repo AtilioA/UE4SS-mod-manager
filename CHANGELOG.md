@@ -1,3 +1,9 @@
+## 2.1.0
+- Added conflict detection for enabled mods.
+- Improved responsive UI layout for smaller windows.
+- Refined command palette, action buttons, and mod-card controls.
+- Updated Linux launch detection to prefer native Linux shipping binaries.
+
 ## 2.0.0
 - **Complete Architecture Rewrite**: Transitioned from a Python GUI to a modern, high-performance desktop application built with Rust and Tauri.
 - **Enhanced Archive Support**: Native drag-and-drop support for ZIP, 7-Zip (`.7z`), and RAR (`.rar`) mod archive extraction.

@@ -1,9 +1,9 @@
+use crate::error::ModError;
+use crate::mod_manager::models::LuaConfigEntry;
+use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use regex::Regex;
-use crate::error::ModError;
-use crate::mod_manager::models::LuaConfigEntry;
 
 #[derive(Debug, Clone)]
 struct ParsedLuaEntry {
@@ -44,7 +44,12 @@ impl LuaConfigDocument {
             if table_depth == 1 {
                 if let Some(comment) = parse_comment_line(line) {
                     pending_comments.push(comment);
-                } else if let Some(parsed) = parse_line(line, line_index, &pending_comments.join("\n"), &re_assignment) {
+                } else if let Some(parsed) = parse_line(
+                    line,
+                    line_index,
+                    &pending_comments.join("\n"),
+                    &re_assignment,
+                ) {
                     if !seen_keys.contains(&parsed.key) {
                         seen_keys.insert(parsed.key.clone());
                         entries.push(parsed);
@@ -235,7 +240,10 @@ fn parse_value_token(token: &str, quote_char: char) -> Option<(serde_json::Value
     if lowered == "nil" {
         return Some((serde_json::Value::Null, "nil".to_string()));
     }
-    if token.len() >= 2 && (token.starts_with('\'') || token.starts_with('"')) && token.ends_with(token.chars().next().unwrap()) {
+    if token.len() >= 2
+        && (token.starts_with('\'') || token.starts_with('"'))
+        && token.ends_with(token.chars().next().unwrap())
+    {
         let inner = &token[1..token.len() - 1];
         let unescaped = unescape_lua_string(inner, quote_char);
         return Some((serde_json::Value::String(unescaped), "string".to_string()));
@@ -245,7 +253,10 @@ fn parse_value_token(token: &str, quote_char: char) -> Option<(serde_json::Value
     let re_number = Regex::new(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$").unwrap();
     if re_number.is_match(token) {
         if let Ok(i) = token.parse::<i64>() {
-            return Some((serde_json::Value::Number(serde_json::Number::from(i)), "number".to_string()));
+            return Some((
+                serde_json::Value::Number(serde_json::Number::from(i)),
+                "number".to_string(),
+            ));
         }
         if let Ok(f) = token.parse::<f64>() {
             if let Some(num) = serde_json::Number::from_f64(f) {
@@ -253,7 +264,10 @@ fn parse_value_token(token: &str, quote_char: char) -> Option<(serde_json::Value
             }
         }
         // Fallback if number parses strangely but is valid format
-        return Some((serde_json::Value::String(token.to_string()), "number".to_string()));
+        return Some((
+            serde_json::Value::String(token.to_string()),
+            "number".to_string(),
+        ));
     }
 
     None
@@ -325,27 +339,42 @@ fn table_depth_delta(line: &str) -> i32 {
     delta
 }
 
-fn format_lua_value(value: &serde_json::Value, value_type: &str, quote: char) -> Result<String, ModError> {
+fn format_lua_value(
+    value: &serde_json::Value,
+    value_type: &str,
+    quote: char,
+) -> Result<String, ModError> {
     match value_type {
         "boolean" => {
             if let serde_json::Value::Bool(b) = value {
-                Ok(if *b { "true".to_string() } else { "false".to_string() })
+                Ok(if *b {
+                    "true".to_string()
+                } else {
+                    "false".to_string()
+                })
             } else {
-                Err(ModError::ConfigValidation("Expected a boolean value.".to_string()))
+                Err(ModError::ConfigValidation(
+                    "Expected a boolean value.".to_string(),
+                ))
             }
         }
         "number" => {
             if let serde_json::Value::Number(n) = value {
                 Ok(n.to_string())
             } else if let serde_json::Value::String(s) = value {
-                let re_number = Regex::new(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$").unwrap();
+                let re_number =
+                    Regex::new(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$").unwrap();
                 if re_number.is_match(s) {
                     Ok(s.clone())
                 } else {
-                    Err(ModError::ConfigValidation("Expected a number, like 95, 95.0, or 1e3.".to_string()))
+                    Err(ModError::ConfigValidation(
+                        "Expected a number, like 95, 95.0, or 1e3.".to_string(),
+                    ))
                 }
             } else {
-                Err(ModError::ConfigValidation("Expected a number value.".to_string()))
+                Err(ModError::ConfigValidation(
+                    "Expected a number value.".to_string(),
+                ))
             }
         }
         "nil" => {
@@ -365,10 +394,15 @@ fn format_lua_value(value: &serde_json::Value, value_type: &str, quote: char) ->
                     .replace(quote, &format!("\\{}", quote));
                 Ok(format!("{}{}{}", quote, escaped, quote))
             } else {
-                Err(ModError::ConfigValidation("Expected a string value.".to_string()))
+                Err(ModError::ConfigValidation(
+                    "Expected a string value.".to_string(),
+                ))
             }
         }
-        other => Err(ModError::ConfigValidation(format!("Unsupported config value type: {}", other))),
+        other => Err(ModError::ConfigValidation(format!(
+            "Unsupported config value type: {}",
+            other
+        ))),
     }
 }
 
@@ -385,18 +419,28 @@ mod tests {
         let path = PathBuf::from("config.lua");
         let doc = LuaConfigDocument::from_text(CONFIG_TEXT, path);
         let entries = doc.get_entries();
-        let map: HashMap<String, LuaConfigEntry> = entries.into_iter().map(|e| (e.key.clone(), e)).collect();
+        let map: HashMap<String, LuaConfigEntry> =
+            entries.into_iter().map(|e| (e.key.clone(), e)).collect();
 
-        assert_eq!(map.get("Enabled").unwrap().value, serde_json::Value::Bool(true));
+        assert_eq!(
+            map.get("Enabled").unwrap().value,
+            serde_json::Value::Bool(true)
+        );
         assert_eq!(map.get("Enabled").unwrap().value_type, "boolean");
 
         assert_eq!(map.get("TargetFOV").unwrap().value.to_string(), "95.0");
         assert_eq!(map.get("TargetFOV").unwrap().value_type, "number");
 
-        assert_eq!(map.get("Name").unwrap().value, serde_json::Value::String("Wide FOV".to_string()));
+        assert_eq!(
+            map.get("Name").unwrap().value,
+            serde_json::Value::String("Wide FOV".to_string())
+        );
         assert_eq!(map.get("Name").unwrap().value_type, "string");
 
-        assert_eq!(map.get("EnableToggleHotkey").unwrap().comment, "F7 toggles the FOV reapply behavior on/off.");
+        assert_eq!(
+            map.get("EnableToggleHotkey").unwrap().comment,
+            "F7 toggles the FOV reapply behavior on/off."
+        );
         assert!(!map.contains_key("Unsupported"));
     }
 
@@ -448,8 +492,14 @@ mod tests {
         let mut doc = LuaConfigDocument::from_path(&config_path).unwrap();
         let mut updates = HashMap::new();
         updates.insert("Enabled".to_string(), serde_json::Value::Bool(false));
-        updates.insert("TargetFOV".to_string(), serde_json::Value::String("100.5".to_string()));
-        updates.insert("Name".to_string(), serde_json::Value::String("Narrow FOV".to_string()));
+        updates.insert(
+            "TargetFOV".to_string(),
+            serde_json::Value::String("100.5".to_string()),
+        );
+        updates.insert(
+            "Name".to_string(),
+            serde_json::Value::String("Narrow FOV".to_string()),
+        );
 
         doc.save(&updates).unwrap();
 
@@ -476,7 +526,10 @@ mod tests {
 
         let mut doc = LuaConfigDocument::from_path(&config_path).unwrap();
         let mut updates = HashMap::new();
-        updates.insert("Name".to_string(), serde_json::Value::String("Narrow\nFOV".to_string()));
+        updates.insert(
+            "Name".to_string(),
+            serde_json::Value::String("Narrow\nFOV".to_string()),
+        );
 
         doc.save(&updates).unwrap();
 
@@ -494,4 +547,3 @@ mod tests {
         assert_eq!(entries[0].value, serde_json::Value::Bool(true));
     }
 }
-

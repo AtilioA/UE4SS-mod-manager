@@ -1,5 +1,6 @@
 use crate::error::ModError;
 use crate::mod_manager::models::UE4SSMod;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -114,9 +115,48 @@ pub fn load_mods<P: AsRef<Path>>(mods_folder: P) -> Result<Vec<UE4SSMod>, ModErr
         }
     }
 
+    annotate_mod_analysis(&mut mods);
+
     // Sort mods by name case-insensitively
     mods.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     Ok(mods)
+}
+
+fn annotate_mod_analysis(mods: &mut [UE4SSMod]) {
+    let mut file_owners: HashMap<String, Vec<String>> = HashMap::new();
+    for m in mods.iter().filter(|m| m.enabled && !m.is_native) {
+        for script in &m.scripts {
+            file_owners
+                .entry(script.to_lowercase())
+                .or_default()
+                .push(m.name.clone());
+        }
+    }
+
+    for m in mods.iter_mut() {
+        m.conflicts.clear();
+
+        if m.enabled && !m.is_native {
+            for script in &m.scripts {
+                if let Some(owners) = file_owners.get(&script.to_lowercase()) {
+                    if owners.len() > 1 {
+                        let others: Vec<&str> = owners
+                            .iter()
+                            .filter(|name| !name.eq_ignore_ascii_case(&m.name))
+                            .map(String::as_str)
+                            .collect();
+                        if !others.is_empty() {
+                            m.conflicts.push(format!(
+                                "Also enabled in {}: {}",
+                                others.join(", "),
+                                script
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn load_single_mod(path: &Path) -> Result<UE4SSMod, ModError> {
@@ -208,6 +248,7 @@ fn load_single_mod(path: &Path) -> Result<UE4SSMod, ModError> {
         is_native: false,
         lang,
         config_path,
+        conflicts: Vec::new(),
     })
 }
 
@@ -556,9 +597,6 @@ fn launch_candidate_priority(_path: &Path) -> u8 {
         if name.ends_with("Linux-Shipping.exe") {
             return 1;
         }
-        if name.ends_with("Win64-Shipping.exe") || name.ends_with("WinGDK-Shipping.exe") {
-            return 10;
-        }
     }
 
     #[cfg(target_os = "macos")]
@@ -587,11 +625,7 @@ fn is_game_launch_candidate(path: &Path, name: &str) -> bool {
 
     #[cfg(target_os = "linux")]
     {
-        path.is_file()
-            && (name.ends_with("Linux-Shipping")
-                || name.ends_with("Linux-Shipping.exe")
-                || name.ends_with("Win64-Shipping.exe")
-                || name.ends_with("WinGDK-Shipping.exe"))
+        path.is_file() && (name.ends_with("Linux-Shipping") || name.ends_with("Linux-Shipping.exe"))
     }
 
     #[cfg(target_os = "macos")]

@@ -29,7 +29,7 @@
         <div class="welcome-logo">🎮</div>
         <h1 style="display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
           <span>UE4SS Mod Manager</span>
-          <span class="version-badge version-badge-large">v2.0.0</span>
+          <span class="version-badge version-badge-large">v2.1.0</span>
         </h1>
         <p class="welcome-desc">
           Manage your Unreal Engine game mods with performance, security, and elegance.
@@ -50,7 +50,7 @@
       <header class="app-header">
         <div class="header-logo">
           <span class="logo-text">MOD MANAGER</span>
-          <span class="version-badge">v2.0.0</span>
+          <span class="version-badge">v2.1.0</span>
         </div>
         <div class="header-path-box">
           <span class="path-label">Active Directory:</span>
@@ -63,7 +63,7 @@
       <section class="controls-card">
         <div class="search-row">
           <div class="search-input-wrapper">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon icon-search"></span>
             <input type="text" id="inp-search" placeholder="Search mods by name...">
             <button id="btn-clear-search" class="clear-button hidden">×</button>
           </div>
@@ -74,6 +74,23 @@
             </label>
             <span class="switch-label">Show native mods</span>
           </div>
+          <div class="switch-wrapper">
+            <label class="switch-container">
+              <input type="checkbox" id="chk-dense-mode">
+              <span class="switch-slider"></span>
+            </label>
+            <span class="switch-label">Dense</span>
+          </div>
+        </div>
+
+        <div id="filter-chips" class="filter-chips">
+          <button class="filter-chip active" data-filter="all">All</button>
+          <button class="filter-chip" data-filter="enabled">Enabled</button>
+          <button class="filter-chip" data-filter="disabled">Disabled</button>
+          <button class="filter-chip" data-filter="lua">Lua</button>
+          <button class="filter-chip" data-filter="native">Native/C++</button>
+          <button class="filter-chip" data-filter="config">Has Config</button>
+          <button class="filter-chip" data-filter="issues">Issues</button>
         </div>
 
         <div class="action-row">
@@ -85,12 +102,13 @@
             </label>
           </div>
           <div class="button-group">
+            <button id="btn-command-palette" class="btn btn-secondary" title="Command Palette (Ctrl+K)"><span class="btn-emoji">⌘</span> Commands</button>
             <button id="btn-open-folder-main" class="btn btn-secondary" title="Open Mods Folder in Explorer"><span class="btn-emoji">📂</span> Open Folder</button>
             <button id="btn-ue4ss-settings" class="btn btn-secondary" title="Configure global UE4SS-settings.ini"><span class="btn-emoji">⚙️</span> UE4SS Settings</button>
-            <button id="btn-refresh" class="btn btn-secondary">Refresh</button>
-            <button id="btn-undo" class="btn btn-secondary">Undo</button>
+            <button id="btn-refresh" class="btn btn-secondary"><span class="btn-emoji">🔄</span> Refresh</button>
+            <button id="btn-undo" class="btn btn-secondary"><span class="btn-emoji">↩️</span> Undo</button>
             <button id="btn-launch" class="btn btn-action">
-              <span class="launch-icon">🚀</span> Launch Game
+              <span class="btn-emoji">🚀</span> Launch Game
             </button>
           </div>
         </div>
@@ -136,6 +154,7 @@
             <span class="switch-label" title="Saves central mods.txt list used by UE4SS">mods.txt</span>
           </div>
         </div>
+        <div id="txt-status-summary" class="status-summary">No mods loaded</div>
         <button id="btn-save" class="btn btn-primary" disabled>
           <span>Save Changes</span>
         </button>
@@ -193,6 +212,18 @@
         <button id="btn-confirm-cancel" class="btn btn-secondary">Cancel</button>
         <button id="btn-confirm-ok" class="btn btn-primary">OK</button>
       </div>
+    </div>
+  </div>
+
+  <!-- COMMAND PALETTE -->
+  <div id="modal-command-palette" class="modal-backdrop hidden">
+    <div class="command-palette">
+      <div class="command-search">
+        <span class="search-icon icon-search"></span>
+        <input type="text" id="inp-command-search" placeholder="Run command...">
+        <button id="btn-command-close" class="modal-close-btn">×</button>
+      </div>
+      <div id="command-list" class="command-list"></div>
     </div>
   </div>
 

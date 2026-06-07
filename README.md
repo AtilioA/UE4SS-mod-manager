@@ -257,6 +257,7 @@ sudo apt install -y \
   wget \
   file \
   libssl-dev \
+  libdbus-1-dev \
   libgtk-3-dev \
   libayatana-appindicator3-dev \
   librsvg2-dev \
@@ -275,6 +276,7 @@ sudo dnf install -y \
   wget \
   file \
   openssl-devel \
+  dbus-devel \
   gtk3-devel \
   libappindicator-gtk3-devel \
   librsvg2-devel \
@@ -291,6 +293,7 @@ sudo pacman -S --needed \
   wget \
   file \
   openssl \
+  dbus \
   gtk3 \
   libayatana-appindicator \
   librsvg \

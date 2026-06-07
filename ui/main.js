@@ -8,7 +8,9 @@ let state = {
   mods: [],
   originalMods: [], // Deep copy to check for modifications
   searchQuery: '',
+  activeFilter: 'all',
   showNative: false,
+  denseMode: false,
   activeConfigPath: '',
   configEntries: [],
   originalConfigEntries: [], // Deep copy to check for config modifications
@@ -36,14 +38,18 @@ const el = {
   inpSearch: document.getElementById('inp-search'),
   btnClearSearch: document.getElementById('btn-clear-search'),
   chkShowNative: document.getElementById('chk-show-native'),
+  chkDenseMode: document.getElementById('chk-dense-mode'),
+  filterChips: document.getElementById('filter-chips'),
   chkToggleAll: document.getElementById('chk-toggle-all'),
   
   btnRefresh: document.getElementById('btn-refresh'),
   btnUndo: document.getElementById('btn-undo'),
   btnLaunch: document.getElementById('btn-launch'),
+  btnCommandPalette: document.getElementById('btn-command-palette'),
   
   listContainer: document.getElementById('list-container'),
   txtListCount: document.getElementById('txt-list-count'),
+  txtStatusSummary: document.getElementById('txt-status-summary'),
   
   chkSaveEnabled: document.getElementById('chk-save-enabled'),
   chkSaveJson: document.getElementById('chk-save-json'),
@@ -65,6 +71,11 @@ const el = {
   txtConfirmDesc: document.getElementById('txt-confirm-desc'),
   btnConfirmCancel: document.getElementById('btn-confirm-cancel'),
   btnConfirmOk: document.getElementById('btn-confirm-ok'),
+
+  modalCommandPalette: document.getElementById('modal-command-palette'),
+  inpCommandSearch: document.getElementById('inp-command-search'),
+  btnCommandClose: document.getElementById('btn-command-close'),
+  commandList: document.getElementById('command-list'),
   
   // Drag and Drop
   dndOverlay: document.getElementById('dnd-overlay'),
@@ -155,6 +166,28 @@ function hasChanges() {
 function updateSaveButton() {
   const modified = hasChanges();
   el.btnSave.disabled = !modified;
+  updateStatusSummary();
+}
+
+function getIssueCounts() {
+  const conflicts = state.mods.reduce((sum, mod) => sum + (mod.conflicts?.length || 0), 0);
+  return { conflicts, total: conflicts };
+}
+
+function updateStatusSummary() {
+  if (!state.mods.length) {
+    el.txtStatusSummary.textContent = 'No mods loaded';
+    return;
+  }
+
+  const enabled = state.mods.filter(m => m.enabled).length;
+  const changed = state.mods.filter(m => {
+    const orig = state.originalMods.find(o => o.name === m.name);
+    return !orig || orig.enabled !== m.enabled;
+  }).length;
+  const issues = getIssueCounts();
+  const issueText = issues.total ? `${issues.total} issue${issues.total === 1 ? '' : 's'}` : 'no issues';
+  el.txtStatusSummary.textContent = `${enabled}/${state.mods.length} enabled · ${changed} unsaved · ${issueText}`;
 }
 
 // --- CONTROLLER ACTIONS ---
@@ -570,6 +603,12 @@ function renderMods() {
   const filtered = state.mods.filter(mod => {
     // Native mods toggle
     if (!state.showNative && mod.is_native) return false;
+    if (state.activeFilter === 'enabled' && !mod.enabled) return false;
+    if (state.activeFilter === 'disabled' && mod.enabled) return false;
+    if (state.activeFilter === 'lua' && mod.lang !== 'lua') return false;
+    if (state.activeFilter === 'native' && !mod.is_native && mod.lang !== 'cpp') return false;
+    if (state.activeFilter === 'config' && !mod.config_path) return false;
+    if (state.activeFilter === 'issues' && !(mod.conflicts?.length)) return false;
     // Search query
     if (state.searchQuery) {
       const q = state.searchQuery.toLowerCase();
@@ -582,6 +621,7 @@ function renderMods() {
   
   // Update count
   el.txtListCount.textContent = `Showing ${filtered.length} of ${state.mods.length} mods`;
+  updateStatusSummary();
   
   if (filtered.length === 0) {
     el.listContainer.innerHTML = `
@@ -616,14 +656,15 @@ function renderMods() {
         </div>
       `;
     }
-    
+
     // Config trigger button
     const configBtn = mod.config_path
-      ? `<button class="btn btn-secondary btn-small btn-config" data-name="${escapeHtml(mod.name)}">⚙️ Configure</button>`
+      ? `<button class="btn btn-secondary btn-small btn-config" data-name="${escapeHtml(mod.name)}"><span class="btn-emoji">⚙️</span> Configure</button>`
       : '';
+    const openBtn = `<button class="btn btn-secondary btn-small btn-open-mod" data-name="${escapeHtml(mod.name)}"><span class="btn-emoji">📂</span> Folder</button>`;
       
     // Uninstall/Delete Button
-    const deleteBtn = `<button class="btn btn-danger btn-small btn-delete" data-name="${escapeHtml(mod.name)}">🗑️ Delete</button>`;
+    const deleteBtn = `<button class="btn btn-danger btn-small btn-delete" data-name="${escapeHtml(mod.name)}"><span class="btn-emoji">🗑️</span> Delete</button>`;
       
     card.innerHTML = `
       <div class="card-left">
@@ -639,7 +680,8 @@ function renderMods() {
           ${scriptsInfo}
         </div>
       </div>
-      <div class="card-right" style="display: flex; gap: 8px; align-items: center;">
+      <div class="card-right">
+        ${openBtn}
         ${configBtn}
         ${deleteBtn}
       </div>
@@ -673,6 +715,17 @@ function renderMods() {
         openConfigModal(mod, btn);
       });
     }
+
+    const openBtnEl = card.querySelector('.btn-open-mod');
+    openBtnEl.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await invoke('open_path', { path: mod.path });
+      } catch (err) {
+        showToast(`Failed to open mod folder: ${err}`, 'error');
+      }
+    });
     
     // Bind delete button
     const deleteBtnEl = card.querySelector('.btn-delete');
@@ -758,6 +811,52 @@ function escapeHtml(str) {
 
 function makeDomId(prefix, ...parts) {
   return [prefix, ...parts.map(part => encodeURIComponent(String(part)))].join('-');
+}
+
+function setActiveFilter(filter) {
+  state.activeFilter = filter;
+  el.filterChips.querySelectorAll('.filter-chip').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  renderMods();
+}
+
+function toggleDenseMode(enabled) {
+  state.denseMode = enabled;
+  el.chkDenseMode.checked = enabled;
+  document.body.classList.toggle('dense-mode', enabled);
+}
+
+const commands = [
+  { id: 'save', label: 'Save Changes', run: () => saveAllChanges(), enabled: () => hasChanges() },
+  { id: 'refresh', label: 'Refresh Mods', run: () => el.btnRefresh.click(), enabled: () => !!state.modsFolder },
+  { id: 'undo', label: 'Undo Unsaved Changes', run: () => undoChanges(), enabled: () => hasChanges() },
+  { id: 'open-folder', label: 'Open Mods Folder', run: () => el.btnOpenFolderMain.click(), enabled: () => !!state.modsFolder },
+  { id: 'settings', label: 'Open UE4SS Settings', run: () => openUe4ssSettingsModal(), enabled: () => !!state.modsFolder },
+  { id: 'launch', label: 'Launch Game', run: () => runGame(), enabled: () => !!state.modsFolder },
+  { id: 'issues', label: 'Show Mods With Issues', run: () => setActiveFilter('issues'), enabled: () => state.mods.length > 0 },
+  { id: 'dense', label: 'Toggle Dense Mode', run: () => toggleDenseMode(!state.denseMode), enabled: () => true },
+];
+
+function openCommandPalette() {
+  el.modalCommandPalette.classList.remove('hidden');
+  el.inpCommandSearch.value = '';
+  renderCommands();
+  setTimeout(() => el.inpCommandSearch.focus(), 0);
+}
+
+function closeCommandPalette() {
+  el.modalCommandPalette.classList.add('hidden');
+}
+
+function renderCommands() {
+  const query = el.inpCommandSearch.value.trim().toLowerCase();
+  const visible = commands.filter(cmd => cmd.label.toLowerCase().includes(query));
+  el.commandList.innerHTML = visible.map(cmd => `
+    <button class="command-item" data-command="${cmd.id}" ${cmd.enabled() ? '' : 'disabled'}>
+      <span>${escapeHtml(cmd.label)}</span>
+    </button>
+  `).join('');
 }
 
 // --- DRAG AND DROP HANDLERS ---
@@ -911,6 +1010,16 @@ if (!window.__initialized) {
     saveAppConfig();
   });
 
+  el.chkDenseMode.addEventListener('change', (e) => {
+    toggleDenseMode(e.target.checked);
+  });
+
+  el.filterChips.addEventListener('click', (e) => {
+    const chip = e.target.closest('.filter-chip');
+    if (!chip) return;
+    setActiveFilter(chip.dataset.filter);
+  });
+
   el.chkSaveEnabled.addEventListener('change', saveAppConfig);
   el.chkSaveJson.addEventListener('change', saveAppConfig);
   el.chkSaveTxt.addEventListener('change', saveAppConfig);
@@ -940,6 +1049,18 @@ if (!window.__initialized) {
   el.btnUndo.addEventListener('click', undoChanges);
   el.btnSave.addEventListener('click', saveAllChanges);
   el.btnLaunch.addEventListener('click', runGame);
+  el.btnCommandPalette.addEventListener('click', openCommandPalette);
+
+  el.btnCommandClose.addEventListener('click', closeCommandPalette);
+  el.inpCommandSearch.addEventListener('input', renderCommands);
+  el.commandList.addEventListener('click', (e) => {
+    const item = e.target.closest('.command-item');
+    if (!item || item.disabled) return;
+    const command = commands.find(cmd => cmd.id === item.dataset.command);
+    if (!command) return;
+    closeCommandPalette();
+    command.run();
+  });
 
   // Config modal events
   el.btnModalClose.addEventListener('click', closeConfigModal);
@@ -954,7 +1075,30 @@ if (!window.__initialized) {
 
   // ESC key listener for modals
   window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    const isCommandKey = e.ctrlKey || e.metaKey;
+
+    if (isCommandKey && key === 'k') {
+      e.preventDefault();
+      openCommandPalette();
+      return;
+    }
+    if (isCommandKey && key === 's') {
+      e.preventDefault();
+      if (hasChanges()) saveAllChanges();
+      return;
+    }
+    if (isCommandKey && key === 'r') {
+      e.preventDefault();
+      el.btnRefresh.click();
+      return;
+    }
+
     if (e.key === 'Escape') {
+      if (!el.modalCommandPalette.classList.contains('hidden')) {
+        closeCommandPalette();
+        return;
+      }
       if (!el.modalConfig.classList.contains('hidden')) {
         closeConfigModal();
       }

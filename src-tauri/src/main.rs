@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod error;
 mod commands;
+mod error;
 mod mod_manager;
 
 fn main() {
@@ -19,6 +19,7 @@ fn main() {
             commands::launch_game,
             commands::pick_mods_folder,
             commands::open_mods_folder,
+            commands::open_path,
             commands::load_app_config,
             commands::save_app_config,
             commands::uninstall_mod,

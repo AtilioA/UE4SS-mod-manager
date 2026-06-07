@@ -1,9 +1,9 @@
+use crate::error::ModError;
+use crate::mod_manager::config_parser::LuaConfigDocument;
+use crate::mod_manager::models::{AppConfig, LuaConfigEntry, UE4SSMod};
+use crate::mod_manager::service;
 use std::collections::HashMap;
 use std::path::Path;
-use crate::error::ModError;
-use crate::mod_manager::models::{UE4SSMod, LuaConfigEntry, AppConfig};
-use crate::mod_manager::service;
-use crate::mod_manager::config_parser::LuaConfigDocument;
 
 #[tauri::command]
 pub async fn detect_mods_folder() -> Result<Option<String>, ModError> {
@@ -25,11 +25,16 @@ pub async fn install_mod(
     let src_path = Path::new(&source_path);
 
     if !src_path.exists() {
-        return Err(ModError::InvalidMod("The specified path does not exist on disk.".to_string()));
+        return Err(ModError::InvalidMod(
+            "The specified path does not exist on disk.".to_string(),
+        ));
     }
 
     if src_path.is_file() {
-        let ext = src_path.extension().and_then(|e| e.to_str()).map(|s| s.to_lowercase());
+        let ext = src_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|s| s.to_lowercase());
         match ext.as_deref() {
             Some("zip") | Some("7z") | Some("rar") => {
                 service::install_mod_archive(mods_path, src_path, replace)
@@ -41,7 +46,9 @@ pub async fn install_mod(
     } else if src_path.is_dir() {
         service::install_mod_folder(mods_path, src_path, replace)
     } else {
-        Err(ModError::InvalidMod("Dropped item is neither a file nor a directory.".to_string()))
+        Err(ModError::InvalidMod(
+            "Dropped item is neither a file nor a directory.".to_string(),
+        ))
     }
 }
 
@@ -53,7 +60,13 @@ pub async fn save_changes(
     save_json: bool,
     save_txt: bool,
 ) -> Result<(), ModError> {
-    service::save_changes(Path::new(&mods_folder), &mods, save_enabled, save_json, save_txt)
+    service::save_changes(
+        Path::new(&mods_folder),
+        &mods,
+        save_enabled,
+        save_json,
+        save_txt,
+    )
 }
 
 #[tauri::command]
@@ -87,10 +100,22 @@ pub async fn pick_mods_folder() -> Result<Option<String>, ModError> {
 #[tauri::command]
 pub async fn open_mods_folder(mods_folder: String) -> Result<(), ModError> {
     let path = Path::new(&mods_folder);
+    open_filesystem_path(path)
+}
+
+#[tauri::command]
+pub async fn open_path(path: String) -> Result<(), ModError> {
+    let path = Path::new(&path);
     if !path.exists() {
-        return Err(ModError::InvalidModFolder("Directory does not exist".to_string()));
+        return Err(ModError::InvalidModFolder(
+            "Path does not exist".to_string(),
+        ));
     }
-    
+
+    open_filesystem_path(path)
+}
+
+fn open_filesystem_path(path: &Path) -> Result<(), ModError> {
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("explorer")
@@ -98,7 +123,7 @@ pub async fn open_mods_folder(mods_folder: String) -> Result<(), ModError> {
             .spawn()
             .map_err(ModError::Io)?;
     }
-    
+
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")
@@ -106,7 +131,7 @@ pub async fn open_mods_folder(mods_folder: String) -> Result<(), ModError> {
             .spawn()
             .map_err(ModError::Io)?;
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         std::process::Command::new("xdg-open")
@@ -114,7 +139,7 @@ pub async fn open_mods_folder(mods_folder: String) -> Result<(), ModError> {
             .spawn()
             .map_err(ModError::Io)?;
     }
-    
+
     Ok(())
 }
 
@@ -134,7 +159,9 @@ pub async fn uninstall_mod(mods_folder: String, mod_name: String) -> Result<(), 
 }
 
 #[tauri::command]
-pub async fn load_ue4ss_settings(mods_folder: String) -> Result<Vec<crate::mod_manager::models::Ue4ssSettingsEntry>, ModError> {
+pub async fn load_ue4ss_settings(
+    mods_folder: String,
+) -> Result<Vec<crate::mod_manager::models::Ue4ssSettingsEntry>, ModError> {
     service::load_ue4ss_settings(Path::new(&mods_folder))
 }
 
@@ -145,4 +172,3 @@ pub async fn save_ue4ss_settings(
 ) -> Result<(), ModError> {
     service::save_ue4ss_settings(Path::new(&mods_folder), updates)
 }
-
